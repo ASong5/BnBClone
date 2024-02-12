@@ -15,6 +15,7 @@ class Spritesheet:
         output_height,
         colour_key=None,
         colours_to_ignore=[],
+        include_flip=False
     ):
         if colour_key:
             self.sheet.set_colorkey(colour_key)
@@ -41,11 +42,16 @@ class Spritesheet:
                 (sprite_width * i, sprite_height * idx, sprite_width, sprite_height),
             )
             bounding_box = image.get_bounding_rect()
-            scale_x = output_width / bounding_box.width
-            scale_y = output_height / bounding_box.height
-            scaled_image = pygame.transform.scale(
-                image.subsurface(bounding_box),
-                (int(bounding_box.width * scale_x), int(bounding_box.height * scale_y)),
-            )
-            sprite_list.append(scaled_image)
+            if bounding_box.width != 0 or bounding_box.height != 0:
+                scale_x = output_width / bounding_box.width
+                scale_y = output_height / bounding_box.height
+                scaled_image = pygame.transform.scale(
+                    image.subsurface(bounding_box),
+                    (int(bounding_box.width * scale_x), int(bounding_box.height * scale_y)),
+                )
+                if include_flip:
+                    flipped_image = pygame.transform.flip(scaled_image, True, False)
+                    sprite_list.append([scaled_image, flipped_image])
+                else:
+                    sprite_list.append(scaled_image)
         return sprite_list
