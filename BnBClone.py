@@ -137,8 +137,10 @@ class Balloon(pygame.sprite.Sprite):
         self.image = balloon_sprites[0]
         self.rect = self.image.get_rect()
         self.explosion_range = explosion_range
+        self.animation_timer = pygame.time.get_ticks()
 
     def update(self):  # type: ignore
+        self.animate()
         self.rect = self.image.get_rect(
             center=(
                 self.row * tile_size + (tile_size / 2),
@@ -147,10 +149,12 @@ class Balloon(pygame.sprite.Sprite):
         )
 
     def animate(self):
-        self.image_idx = (
-            self.image_idx + 1 if self.image_idx < len(balloon_sprites) - 1 else 0
-        )
-        self.image
+        if pygame.time.get_ticks() - self.animation_timer >= 200:
+            self.animation_timer = pygame.time.get_ticks()
+            self.image_idx = (
+                self.image_idx + 1 if self.image_idx < len(balloon_sprites) - 2 else 0
+            )
+            self.image = balloon_sprites[self.image_idx]
 
 
 class Player(pygame.sprite.Sprite):
