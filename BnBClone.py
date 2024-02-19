@@ -1,5 +1,4 @@
 import pygame
-import copy
 from typing_extensions import Protocol
 import faulthandler
 from utils import spritesheets
@@ -36,9 +35,15 @@ class Tile(pygame.sprite.Sprite):
             pygame.draw.rect(
                 self.image, (255, 255, 255), (0, 0, self.size, self.size), 1
             )
+            self.is_exploded = False
         else:
+            self.image.fill(pygame.Color(0, 0, 0))
+            pygame.draw.rect(
+                self.image, (255, 255, 255), (0, 0, self.size, self.size), 1
+            )
             for group in grid.tile_exploded_groups:
                 if group[0].has(self):
+                    self.is_exploded = True
                     self.image.fill(pygame.Color(255, 0, 0))
 
 
@@ -50,8 +55,8 @@ class Grid:
         self.tile_exploded_groups = []
         self.balloon_groups = []
         self.__tiles = [
-            [Tile(row, col, self.tileSize) for row in range(self.gridSize)]
-            for col in range(self.gridSize)
+            [Tile(row, col, self.tileSize) for col in range(self.gridSize)]
+            for row in range(self.gridSize)
         ]
 
         for row in range(self.gridSize):
@@ -146,8 +151,8 @@ class Balloon(pygame.sprite.Sprite):
         self.animate()
         self.rect = self.image.get_rect(
             center=(
-                self.row * tile_size + (tile_size / 2),
                 self.col * tile_size + (tile_size / 2),
+                self.row * tile_size + (tile_size / 2),
             )
         )
 
@@ -170,13 +175,13 @@ class Player(pygame.sprite.Sprite):
 
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
-            self.rect.y + self.rect.height - tile_size / 4,
+            self.rect.y + self.image.get_height() * (3 / 4),
             self.rect.width - 2 * (self.image.get_width() / 7),
-            tile_size / 4,
+            self.image.get_height() / 4,
         )
         self.vel = vel
         self.num_balloons = 1
-        self.explosion_range = 1 
+        self.explosion_range = 7
         self.animation_timer = pygame.time.get_ticks()
         self.sprite_flip = 1
 
@@ -186,9 +191,9 @@ class Player(pygame.sprite.Sprite):
 
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
-            self.rect.y + self.rect.height - tile_size / 4,
+            self.rect.y + self.image.get_height() * (3 / 4),
             self.rect.width - 2 * (self.image.get_width() / 7),
-            tile_size / 4,
+            self.image.get_height() / 4,
         )
 
         pygame.draw.rect(
@@ -263,10 +268,11 @@ class Player(pygame.sprite.Sprite):
     #    return sprite_one.hitbox.colliderect(sprite_two.rect)
 
     def is_hit(self, player, tile):
-        if not player.get_tile(player.rect.x, player.rect.y) == (tile.row, tile.col):
+        if not pygame.sprite.collide_rect(player, tile):
             return False
-        tile_x, tile_y = tile.row, tile.col
-
+        if tile.rect.contains(player.hitbox):
+            return True
+        tile_x, tile_y = tile.col, tile.row
         tile_x_left = tile_x * tile_size
         tile_x_right = tile_x_left + tile_size
         tile_y_top = tile_y * tile_size
@@ -280,36 +286,76 @@ class Player(pygame.sprite.Sprite):
         hitbox_top = player.hitbox.y
         hitbox_bot = player.hitbox.y + hitbox_height
 
-        threshold_x = hitbox_width - hitbox_width / 3
-        threshold_y = hitbox_height - hitbox_height / 3
+        threshold_x = hitbox_width * (2 / 3)
+        threshold_y = hitbox_height * (2 / 3)
 
-        if tile_y_bot - hitbox_top >= threshold_y:
-            return True
-        elif hitbox_right - tile_x_left >= threshold_x:
-            return True
-        elif tile_x_right - hitbox_left >= threshold_x:
-            return True
-        elif hitbox_bot - tile_y_top >= threshold_y:
-            return True
+        if (
+            tile_y_bot - hitbox_top >= threshold_y
+            and hitbox_top >= tile_y_bot / 2
+            or hitbox_bot - tile_y_top >= threshold_y
+            and hitbox_bot <= tile_y_bot / 2
+        ):
+            if hitbox_left >= tile_x_left and hitbox_right <= tile_x_right:
+                return True
+            if (
+                hitbox_right - tile_x_left >= threshold_x
+                and hitbox_left <= tile_x_left
+                or tile_x_right - hitbox_left >= threshold_x
+                and hitbox_right >= tile_x_right
+            ):
+                return True
         else:
-            return False
+            tile_hitbox_left = (
+                int(hitbox_bot / tile_size),
+                int(hitbox_left / tile_size),
+            )
+            tile_hitbox_right = (
+                int(hitbox_bot / tile_size),
+                int(hitbox_right / tile_size),
+            )
+            tile_hitbox_top = (
+                int(hitbox_top / tile_size),
+                int(hitbox_left / tile_size),
+            )
+            tile_hitbox_bot = (
+                int(hitbox_bot / tile_size),
+                int(hitbox_left / tile_size),
+            )
+            if tile_hitbox_left != tile_hitbox_right:
+                if (
+                    grid.get_tile(tile_hitbox_left[0], tile_hitbox_left[1]).is_exploded
+                    and grid.get_tile(
+                        tile_hitbox_right[0], tile_hitbox_right[1]
+                    ).is_exploded
+                ):
+                    return True
+            if tile_hitbox_top != tile_hitbox_bot:
+                if (
+                    grid.get_tile(tile_hitbox_top[0], tile_hitbox_top[1]).is_exploded
+                    and grid.get_tile(
+                        tile_hitbox_bot[0], tile_hitbox_bot[1]
+                    ).is_exploded
+                ):
+                    return True
+
+        return False
 
     def get_tile(self, x, y):
-        row = int((x + self.image.get_width() / 2) / tile_size)
-        col = int((y + self.image.get_height() / 2) / tile_size)
+        row = int((y + self.image.get_height() / 2) / tile_size)
+        col = int((x + self.image.get_width() / 2) / tile_size)
         return (row, col)
 
 
-class player_hitbox_ratio(pygame.sprite.collide_rect_ratio):
-    def __init__(self, ratio):
-        super(player_hitbox_ratio, self).__init__(ratio)
-
-    def __call__(self, left: Player, right: _HasRect) -> bool:  # type: ignore
-        tmp_copy = copy.copy(left)
-        tmp_copy.rect = left.hitbox.copy()
-        res = super().__call__(tmp_copy, right)
-
-        return res
+# class player_hitbox_ratio(pygame.sprite.collide_rect_ratio):
+#    def __init__(self, ratio):
+#        super(player_hitbox_ratio, self).__init__(ratio)
+#
+#    def __call__(self, left: Player, right: _HasRect) -> bool:  # type: ignore
+#        tmp_copy = copy.copy(left)
+#        tmp_copy.rect = left.hitbox.copy()
+#        res = super().__call__(tmp_copy, right)
+#
+#        return res
 
 
 pygame.init()
@@ -391,8 +437,15 @@ while running:
         grid.balloon_groups.remove(group)
 
     player_group.update()
-    for tile_group in grid.tile_exploded_groups: 
-        if len(pygame.sprite.groupcollide(player_group, tile_group[0], False, False, player.is_hit)) > 0: # type: ignore
+    for tile_group in grid.tile_exploded_groups:
+        if (
+            len(
+                pygame.sprite.groupcollide(
+                    player_group, tile_group[0], False, False, player.is_hit
+                )
+            )
+            > 0
+        ):  # type: ignore
             player.rect.x = 0
             player.rect.y = 0
         if pygame.time.get_ticks() - tile_group[1] >= 500:
