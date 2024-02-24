@@ -142,7 +142,6 @@ class Grid:
     def update(self):
         pass
 
-
 class Bubble(pygame.sprite.Sprite):
     def __init__(self, row, col, player_id, explosion_range, bubble_sprites):
         super(Bubble, self).__init__()
@@ -275,6 +274,20 @@ class Player(pygame.sprite.Sprite):
                         ) == new_coord or not grid.has_bubble(*new_coord):
                             self.rect.y += self.vel
 
+    # might put this in its own utiliy/engine module
+    def is_hit(self, grid):
+        total_overlap_area = 0
+        player_area = self.hitbox.width * self.hitbox.height
+        
+        for group in grid.tile_exploded_groups:
+            for tile in group[0]:
+                if self.hitbox.colliderect(tile.rect):
+                    overlap_rect = self.hitbox.clip(tile.rect)
+                    total_overlap_area += overlap_rect.width * overlap_rect.height
+                    if total_overlap_area / player_area > 0.66:
+                        return True
+        return False
+
     def drop_bubble(self, grid, bubble_sprite):
         if self.num_bubbles > 0:
             coord = self.get_tile(self.rect.x, self.rect.y, grid)
@@ -296,9 +309,7 @@ class GameObject:
         self.screen = pygame.display.set_mode((screen_width, screen_height))
         self.grid = Grid(NUM_TILES, screen_width)
         self.user_id = 0
-        self.spritesheets = {}
-        self.img_sprites = {}
-        self.load_assets()
+        self.img_sprites = self.load_assets()
         self.player_group = pygame.sprite.Group()
         self.player_group.add(Player(self.user_id, 5, self.img_sprites["player"]))
         self.clock = pygame.time.Clock()
@@ -306,18 +317,20 @@ class GameObject:
         self.pressed_keys = []
 
     def load_assets(self):
-        self.spritesheets["characters"] = {}
-        self.spritesheets["bubbles"] = {}
+        sprite_sheets = {}
+        img_sprites = {}
+        sprite_sheets["characters"] = {}
+        sprite_sheets["bubbles"] = {}
         for root, _, files in os.walk("assets/spritesheets/"):
             for file in files:
                 if root.split("/")[-2] == ("characters"):
-                    self.spritesheets["characters"][
+                    sprite_sheets["characters"][
                         Characters.DEFAULT
                     ] = spritesheets.Spritesheet(
                         os.path.join(os.path.curdir, root, file)
                     )
-                    self.img_sprites["player"] = {}
-                    self.img_sprites["player"]["idle"] = self.spritesheets[
+                    img_sprites["player"] = {}
+                    img_sprites["player"]["idle"] = sprite_sheets[
                         "characters"
                     ][Characters.DEFAULT].get_sprites(
                         0,
@@ -327,7 +340,7 @@ class GameObject:
                         self.grid.tile_size,
                         include_flip=True,
                     )
-                    self.img_sprites["player"]["move"] = self.spritesheets[
+                    img_sprites["player"]["move"] = sprite_sheets[
                         "characters"
                     ][Characters.DEFAULT].get_sprites(
                         1,
@@ -339,13 +352,13 @@ class GameObject:
                     )
 
                 elif root.endswith("bubbles"):
-                    self.spritesheets["bubbles"][
+                    sprite_sheets["bubbles"][
                         Bubbles.DEFAULT
                     ] = spritesheets.Spritesheet(
                         os.path.join(os.path.curdir, root, file)
                     )
-                    self.img_sprites["bubble"] = {}
-                    self.img_sprites["bubble"]["idle"] = self.spritesheets["bubbles"][
+                    img_sprites["bubble"] = {}
+                    img_sprites["bubble"]["idle"] = sprite_sheets["bubbles"][
                         Bubbles.DEFAULT
                     ].get_sprites(
                         0,
@@ -356,87 +369,10 @@ class GameObject:
                         pygame.Color(26, 122, 62, 255),
                         [pygame.Color(36, 82, 59)],
                     )
+        
+        return img_sprites
 
-    # might put this in its own utiliy/engine module
-    def is_hit(self, player, tile):
-        if not pygame.sprite.collide_rect(player, tile):
-            return False
-        if tile.rect.contains(player.hitbox):
-            return True
-
-        tile_size = player.rect.width
-        tile_x, tile_y = tile.col, tile.row
-        tile_x_left = tile_x * tile_size
-        tile_x_right = tile_x_left + tile_size
-        tile_y_top = tile_y * tile_size
-        tile_y_bot = tile_y_top + tile_size
-
-        hitbox_width = player.hitbox.width
-        hitbox_height = player.hitbox.height
-
-        hitbox_right = player.hitbox.x + hitbox_width
-        hitbox_left = player.hitbox.x
-        hitbox_top = player.hitbox.y
-        hitbox_bot = player.hitbox.y + hitbox_height
-
-        threshold_x = hitbox_width * (2 / 3)
-        threshold_y = hitbox_height * (2 / 3)
-
-        if (
-            tile_y_bot - hitbox_top >= threshold_y
-            and hitbox_top >= tile_y_bot / 2
-            or hitbox_bot - tile_y_top >= threshold_y
-            and hitbox_bot <= tile_y_bot / 2
-        ):
-            if hitbox_left >= tile_x_left and hitbox_right <= tile_x_right:
-                return True
-
-            if (
-                hitbox_right - tile_x_left >= threshold_x
-                and hitbox_left <= tile_x_left
-                or tile_x_right - hitbox_left >= threshold_x
-                and hitbox_right >= tile_x_right
-            ):
-                return True
-        else:
-            tile_hitbox_left = (
-                int(hitbox_bot / tile_size),
-                int(hitbox_left / tile_size),
-            )
-            tile_hitbox_right = (
-                int(hitbox_bot / tile_size),
-                int(hitbox_right / tile_size),
-            )
-            tile_hitbox_top = (
-                int(hitbox_top / tile_size),
-                int(hitbox_left / tile_size),
-            )
-            tile_hitbox_bot = (
-                int(hitbox_bot / tile_size),
-                int(hitbox_left / tile_size),
-            )
-            if tile_hitbox_left != tile_hitbox_right:
-                if (
-                    self.grid.get_tile(
-                        tile_hitbox_left[0], tile_hitbox_left[1]
-                    ).is_exploded
-                    and self.grid.get_tile(
-                        tile_hitbox_right[0], tile_hitbox_right[1]
-                    ).is_exploded
-                ):
-                    return True
-            if tile_hitbox_top != tile_hitbox_bot:
-                if (
-                    self.grid.get_tile(
-                        tile_hitbox_top[0], tile_hitbox_top[1]
-                    ).is_exploded
-                    and self.grid.get_tile(
-                        tile_hitbox_bot[0], tile_hitbox_bot[1]
-                    ).is_exploded
-                ):
-                    return True
-        return False
-
+        
     def update(self):
         delete_bubble_groups = []
         delete_tile_exploded_groups = []
@@ -454,16 +390,8 @@ class GameObject:
             self.grid.bubble_groups.remove(group)
 
         self.player_group.update(self.grid, self.pressed_keys, self.screen.get_size())
-        for tile_group in self.grid.tile_exploded_groups:
-            collided_sprites = pygame.sprite.groupcollide(
-                self.player_group, tile_group[0], False, False, self.is_hit
-            )
-            if len(collided_sprites) > 0:
-                for player in collided_sprites:
-                    if len(collided_sprites[player]) > 0:
-                        player.rect.x = 0
-                        player.rect.y = 0
 
+        for tile_group in self.grid.tile_exploded_groups:
             if pygame.time.get_ticks() - tile_group[1] >= 500:
                 tile_group[0].update(self.grid, reset=True)
                 tile_group[0].empty()
@@ -473,6 +401,11 @@ class GameObject:
 
         for group in delete_tile_exploded_groups:
             self.grid.tile_exploded_groups.remove(group)
+
+        for player in self.player_group.sprites():
+            if player.is_hit(self.grid):
+                player.rect.x = 0
+                player.rect.y = 0
 
     def draw(self):
         self.screen.fill("black")
