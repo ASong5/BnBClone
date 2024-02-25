@@ -228,51 +228,37 @@ class Player(pygame.sprite.Sprite):
             )
             self.image = sprite_type[self.image_idx][self.sprite_flip]
 
+
+
     def move(self, grid, pressed_keys, screen_size):
         if len(pressed_keys) > 0:
             match pressed_keys[-1]:
                 case pygame.K_RIGHT:
-                    if (
-                        self.rect.x + self.image.get_width() + self.vel
-                        <= screen_size[0]
-                    ):
-                        new_pos = (self.rect.x + self.vel, self.rect.y)
-                        new_coord = self.get_tile(*new_pos, grid)
-                        if self.get_tile(
-                            self.rect.x, self.rect.y, grid
-                        ) == new_coord or not grid.has_bubble(*new_coord):
-                            self.sprite_flip = 1
-                            self.rect.x += self.vel
+                    self.move_in_direction(grid, screen_size, 1, 0)
                 case pygame.K_LEFT:
-                    if self.rect.x - self.vel >= 0:
-                        new_pos = (self.rect.x - self.vel, self.rect.y)
-                        new_coord = self.get_tile(*new_pos, grid)
-                        if self.get_tile(
-                            self.rect.x, self.rect.y, grid
-                        ) == new_coord or not grid.has_bubble(*new_coord):
-                            self.sprite_flip = 0
-                            self.rect.x -= self.vel
-
+                    self.move_in_direction(grid, screen_size, -1, 0)
                 case pygame.K_UP:
-                    if self.rect.y - self.vel >= 0:
-                        new_pos = (self.rect.x, self.rect.y - self.vel)
-                        new_coord = self.get_tile(*new_pos, grid)
-                        if self.get_tile(
-                            self.rect.x, self.rect.y, grid
-                        ) == new_coord or not grid.has_bubble(*new_coord):
-                            self.rect.y -= self.vel
-
+                    self.move_in_direction(grid, screen_size, 0, -1)
                 case pygame.K_DOWN:
-                    if (
-                        self.rect.y + self.image.get_height() + self.vel
-                        <= screen_size[1]
-                    ):
-                        new_pos = (self.rect.x, self.rect.y + self.vel)
-                        new_coord = self.get_tile(*new_pos, grid)
-                        if self.get_tile(
-                            self.rect.x, self.rect.y, grid
-                        ) == new_coord or not grid.has_bubble(*new_coord):
-                            self.rect.y += self.vel
+                    self.move_in_direction(grid, screen_size, 0, 1)
+
+    def move_in_direction(self, grid, screen_size, dx, dy):
+        new_pos = (self.rect.x + dx * self.vel, self.rect.y + dy * self.vel)
+        new_coord = self.get_tile(*new_pos, grid)
+        if (
+            self.get_tile(self.rect.x, self.rect.y, grid) == new_coord
+            or not grid.has_bubble(*new_coord)
+        ) and (
+            0 <= new_pos[0] <= screen_size[0] - self.image.get_width()
+            and 0 <= new_pos[1] <= screen_size[1] - self.image.get_height()
+        ):
+            if dx == 1:
+                self.sprite_flip = 1
+            elif dx == -1:
+                self.sprite_flip = 0          
+            self.rect.x += dx * self.vel
+            self.rect.y += dy * self.vel
+
 
     # might put this in its own utiliy/engine module
     def is_hit(self, grid):
