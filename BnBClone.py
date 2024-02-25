@@ -1,5 +1,6 @@
 import os
 import pygame
+import math
 from enum import Enum
 import faulthandler
 from utils import spritesheets
@@ -284,8 +285,8 @@ class Player(pygame.sprite.Sprite):
                 grid.toggle_bubble(*coord)
 
     def get_tile(self, x, y, grid):
-        row = int((y + self.image.get_height() / 2) / grid.tile_size)
-        col = int((x + self.image.get_width() / 2) / grid.tile_size)
+        row = int((y + math.ceil(self.image.get_height() / 2)) / grid.tile_size)
+        col = int((x + math.ceil(self.image.get_width() / 2)) / grid.tile_size)
         return (row, col)
 
 
