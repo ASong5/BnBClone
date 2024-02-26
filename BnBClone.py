@@ -40,6 +40,7 @@ class Tile(pygame.sprite.Sprite):
         self.size = size
         self.explode_sprites = explode_sprites
         self.tile_sprite = tile_sprite
+        self.image_idx = 0
         self.image = self.tile_sprite
         self.rect = self.image.get_rect()
         self.rect.topleft = (self.col * self.size, self.row * self.size)
@@ -52,21 +53,31 @@ class Tile(pygame.sprite.Sprite):
             self.image = self.tile_sprite
             self.is_exploded = False
             self.explode_dir = -1
+            self.image_idx = 0
         else:
             for group in grid.tile_exploded_groups:
                 if group[0].has(self):
+                    if pygame.time.get_ticks() - group[1] <= 50:
+                        self.image_idx = 1
+                    elif pygame.time.get_ticks() - group[1] <= 100:
+                        self.image_idx = 2
+
+                    base_tile = self.tile_sprite.copy()
                     self.is_exploded = True
                     if self.explode_dir == Tile.EXPLODE_DIR.DOWN:
-                        self.image = self.explode_sprites[0]
+                        base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
+                        self.image = base_tile
                     elif self.explode_dir == Tile.EXPLODE_DIR.RIGHT:
-                        self.image = self.explode_sprites[1]
+                        base_tile.blit(self.explode_sprites[self.image_idx][1], (0, 0))
                     elif self.explode_dir == Tile.EXPLODE_DIR.UP:
-                        self.image = self.explode_sprites[2]
+                        base_tile.blit(self.explode_sprites[self.image_idx][2], (0, 0))
                     elif self.explode_dir == Tile.EXPLODE_DIR.LEFT:
-                        self.image = self.explode_sprites[3]
-                    # will add center sprite later    
+                        base_tile.blit(self.explode_sprites[self.image_idx][3], (0, 0))
+                    # will add center sprite later
                     elif self.explode_dir == Tile.EXPLODE_DIR.CENTER:
-                        self.image = self.explode_sprites[0]
+                        base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
+                    self.image = base_tile
+
 
 class Grid:
     def __init__(self, grid_size, screen_size, tile_sprites, explode_sprites):
@@ -77,9 +88,9 @@ class Grid:
         self.bubble_groups = []
         self.__tiles = [
             [
-                Tile(row, col, self.tile_size, tile_sprites[0], explode_sprites[0])
+                Tile(row, col, self.tile_size, tile_sprites[0], explode_sprites)
                 if (row + col) % 2 == 0
-                else Tile(row, col, self.tile_size, tile_sprites[1], explode_sprites[0])
+                else Tile(row, col, self.tile_size, tile_sprites[1], explode_sprites)
                 for col in range(self.grid_size)
             ]
             for row in range(self.grid_size)
@@ -421,7 +432,7 @@ class GameObject:
                             pygame.Color(26, 122, 62, 255),
                             [pygame.Color(36, 82, 59)],
                         )
-                    elif file == "explode.png":
+                    elif file == "explosion.png":
                         sprite_sheets["tiles"]["explode"] = spritesheets.Spritesheet(
                             os.path.join(os.path.curdir, root, file)
                         )
@@ -429,11 +440,11 @@ class GameObject:
                             "explode"
                         ].get_sprites(
                             0,
-                            1,
+                            3,
                             1,
                             self.sprite_size,
                             self.sprite_size,
-                            include_rotate_cardinal=True
+                            include_rotate_cardinal=True,
                         )
 
                 elif root.endswith("maps"):
