@@ -371,7 +371,7 @@ class GameObject:
             self.img_sprites["tile"]["explode"],
         )
         self.player_group = pygame.sprite.Group()
-        self.player_group.add(Player(self.user_id, 8, self.img_sprites["player"]))
+        self.player_group.add(Player(self.user_id, 3, self.img_sprites["player"]))
         self.clock = pygame.time.Clock()
         self.running = True
         self.pressed_keys = []
@@ -520,7 +520,7 @@ class GameObject:
 
             self.update()
             self.draw()
-            self.clock.tick(60)
+            self.clock.tick(165)
         self.terminate()
 
     def terminate(self):
