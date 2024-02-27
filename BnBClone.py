@@ -10,14 +10,6 @@ faulthandler.enable()
 NUM_TILES = 15
 
 
-class Characters(Enum):
-    DEFAULT = 0
-
-
-class Bubbles(Enum):
-    DEFAULT = 0
-
-
 EVENTS = {
     "PLAYER_IDLE": pygame.USEREVENT + 1,
     "PLAYER_MOVE": pygame.USEREVENT + 2,
@@ -28,10 +20,10 @@ EVENTS = {
 class Tile(pygame.sprite.Sprite):
     class EXPLODE_DIR(Enum):
         CENTER = 0
-        UP = 1
-        DOWN = 2
-        LEFT = 3
-        RIGHT = 4
+        RIGHT = 1
+        LEFT = 2
+        DOWN = 3
+        UP = 4
 
     def __init__(self, row, col, size, tile_sprite, explode_sprites):
         super(Tile, self).__init__()
@@ -40,43 +32,47 @@ class Tile(pygame.sprite.Sprite):
         self.size = size
         self.explode_sprites = explode_sprites
         self.tile_sprite = tile_sprite
-        self.image_idx = 0
+        self.image_idx = -1
         self.image = self.tile_sprite
         self.rect = self.image.get_rect()
         self.rect.topleft = (self.col * self.size, self.row * self.size)
         self.has_bubble = False
-        self.is_exploded = False
         self.explode_dir = -1
+        self.exploded_count = 0
 
     def update(self, grid, reset):  # type: ignore
         if reset:
-            self.image = self.tile_sprite
-            self.is_exploded = False
-            self.explode_dir = -1
-            self.image_idx = 0
+            self.exploded_count -= 1
+            if self.exploded_count == 0:
+                self.image = self.tile_sprite
+                self.explode_dir = -1
+                self.image_idx = 0
+
         else:
             for group in grid.tile_exploded_groups:
                 if group[0].has(self):
-                    if pygame.time.get_ticks() - group[1] <= 50:
-                        self.image_idx = 1
-                    elif pygame.time.get_ticks() - group[1] <= 100:
+                    if pygame.time.get_ticks() - group[1] <= 350:
                         self.image_idx = 2
+                    elif pygame.time.get_ticks() - group[1] <= 400:
+                        self.image_idx = 1
+                    elif pygame.time.get_ticks() - group[1] <= 450:
+                        self.image_idx = 0
 
-                    base_tile = self.tile_sprite.copy()
-                    self.is_exploded = True
-                    if self.explode_dir == Tile.EXPLODE_DIR.DOWN:
-                        base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
-                        self.image = base_tile
-                    elif self.explode_dir == Tile.EXPLODE_DIR.RIGHT:
-                        base_tile.blit(self.explode_sprites[self.image_idx][1], (0, 0))
-                    elif self.explode_dir == Tile.EXPLODE_DIR.UP:
-                        base_tile.blit(self.explode_sprites[self.image_idx][2], (0, 0))
-                    elif self.explode_dir == Tile.EXPLODE_DIR.LEFT:
-                        base_tile.blit(self.explode_sprites[self.image_idx][3], (0, 0))
-                    # will add center sprite later
-                    elif self.explode_dir == Tile.EXPLODE_DIR.CENTER:
-                        base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
-                    self.image = base_tile
+            base_tile = self.tile_sprite.copy()
+            if self.explode_dir == Tile.EXPLODE_DIR.DOWN:
+                base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
+                self.image = base_tile
+            elif self.explode_dir == Tile.EXPLODE_DIR.RIGHT:
+                base_tile.blit(self.explode_sprites[self.image_idx][1], (0, 0))
+            elif self.explode_dir == Tile.EXPLODE_DIR.UP:
+                base_tile.blit(self.explode_sprites[self.image_idx][2], (0, 0))
+            elif self.explode_dir == Tile.EXPLODE_DIR.LEFT:
+                base_tile.blit(self.explode_sprites[self.image_idx][3], (0, 0))
+            # will add center sprite later
+            elif self.explode_dir == Tile.EXPLODE_DIR.CENTER:
+                base_tile.blit(self.explode_sprites[self.image_idx][0], (0, 0))
+            self.image = base_tile
+        self.exploded_count -= 0
 
 
 class Grid:
@@ -153,29 +149,32 @@ class Grid:
     def explode_tiles(self, group_idx):
         group = pygame.sprite.Group()
         for bubble in self.bubble_groups[group_idx][0]:
-            group.add(self.__tiles[bubble.row][bubble.col])
             self.__tiles[bubble.row][bubble.col].explode_dir = Tile.EXPLODE_DIR.CENTER
+            if not group.has(self.__tiles[bubble.row][bubble.col]):
+                self.__tiles[bubble.row][bubble.col].exploded_count += 1
+            group.add(self.__tiles[bubble.row][bubble.col])
+
             for i in range(bubble.explosion_range):
-                if bubble.row + i + 1 < self.grid_size:
-                    group.add(self.__tiles[bubble.row + i + 1][bubble.col])
-                    self.__tiles[bubble.row + i + 1][
-                        bubble.col
-                    ].explode_dir = Tile.EXPLODE_DIR.DOWN
-                if bubble.row - i - 1 >= 0:
-                    group.add(self.__tiles[bubble.row - i - 1][bubble.col])
-                    self.__tiles[bubble.row - i - 1][
-                        bubble.col
-                    ].explode_dir = Tile.EXPLODE_DIR.UP
-                if bubble.col + i + 1 < self.grid_size:
-                    group.add(self.__tiles[bubble.row][bubble.col + i + 1])
-                    self.__tiles[bubble.row][
-                        bubble.col + i + 1
-                    ].explode_dir = Tile.EXPLODE_DIR.RIGHT
-                if bubble.col - i - 1 >= 0:
-                    group.add(self.__tiles[bubble.row][bubble.col - i - 1])
-                    self.__tiles[bubble.row][
-                        bubble.col - i - 1
-                    ].explode_dir = Tile.EXPLODE_DIR.LEFT
+                for j in range(4):
+                    dx, dy = 0, 0
+                    if j == 0:
+                        dx = i + 1
+                    elif j == 1:
+                        dx = -(i + 1)
+                    elif j == 2:
+                        dy = i + 1
+                    elif j == 3:
+                        dy = -(i + 1)
+
+                    row = bubble.row + dy
+                    col = bubble.col + dx
+
+                    if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
+                        self.__tiles[row][col].explode_dir = Tile.EXPLODE_DIR(j + 1)
+                        if not group.has(self.__tiles[row][col]):
+                            self.__tiles[row][col].exploded_count += 1
+                        group.add(self.__tiles[row][col])
+
         self.tile_exploded_groups.append([group, pygame.time.get_ticks()])
 
     def get_tile(self, row, col):
@@ -215,6 +214,9 @@ class Grid:
 
 
 class Bubble(pygame.sprite.Sprite):
+    class BubbleType(Enum):
+        DEFAULT = 0
+
     def __init__(self, row, col, player_id, explosion_range, bubble_sprites):
         super(Bubble, self).__init__()
         self.player_id = player_id
@@ -249,6 +251,9 @@ class Bubble(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
+    class Characters(Enum):
+        DEFAULT = 0
+
     def __init__(self, id, vel, player_sprites):
         super(Player, self).__init__()
         self.id = id
@@ -330,7 +335,6 @@ class Player(pygame.sprite.Sprite):
             self.rect.x += dx * self.vel
             self.rect.y += dy * self.vel
 
-    # might put this in its own utiliy/engine module
     def is_hit(self, grid):
         total_overlap_area = 0
         player_area = self.hitbox.width * self.hitbox.height
@@ -387,13 +391,13 @@ class GameObject:
             for file in files:
                 if root.split("/")[-2] == ("characters"):
                     sprite_sheets["characters"][
-                        Characters.DEFAULT
+                        Player.Characters.DEFAULT
                     ] = spritesheets.Spritesheet(
                         os.path.join(os.path.curdir, root, file)
                     )
                     img_sprites["player"] = {}
                     img_sprites["player"]["idle"] = sprite_sheets["characters"][
-                        Characters.DEFAULT
+                        Player.Characters.DEFAULT
                     ].get_sprites(
                         0,
                         18,
@@ -403,7 +407,7 @@ class GameObject:
                         include_flip_x=True,
                     )
                     img_sprites["player"]["move"] = sprite_sheets["characters"][
-                        Characters.DEFAULT
+                        Player.Characters.DEFAULT
                     ].get_sprites(
                         1,
                         18,
@@ -416,13 +420,13 @@ class GameObject:
                 elif root.endswith("bubbles"):
                     if file == "default.png":
                         sprite_sheets["bubbles"][
-                            Bubbles.DEFAULT
+                            Bubble.BubbleType.DEFAULT
                         ] = spritesheets.Spritesheet(
                             os.path.join(os.path.curdir, root, file)
                         )
                         img_sprites["bubble"] = {}
                         img_sprites["bubble"]["idle"] = sprite_sheets["bubbles"][
-                            Bubbles.DEFAULT
+                            Bubble.BubbleType.DEFAULT
                         ].get_sprites(
                             0,
                             8,
