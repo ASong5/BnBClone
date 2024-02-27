@@ -258,10 +258,10 @@ class Player(pygame.sprite.Sprite):
         super(Player, self).__init__()
         self.id = id
         self.player_sprites = player_sprites
-        self.image = self.player_sprites["idle"][0][0]
+        self.sprite_type = "idle"
+        self.image = self.player_sprites[self.sprite_type][0][0]
         self.image_idx = 0
         self.rect = self.image.get_rect()
-
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
             self.rect.y + self.image.get_height() * (3 / 4),
@@ -276,8 +276,11 @@ class Player(pygame.sprite.Sprite):
         self.sprite_flip_y = 0
 
     def update(self, grid, pressed_keys, screen_size):  # type: ignore
+        self.sprite_type = "idle" if len(pressed_keys) == 0 else "move"
+        # resets the image index to 0 if the sprite_type changed, preventing an out of bounds error
+        self.image_idx = self.image_idx % len(self.player_sprites[self.sprite_type])
         self.move(grid, pressed_keys, screen_size)
-        self.animate(pressed_keys)
+        self.animate()
 
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
@@ -285,26 +288,22 @@ class Player(pygame.sprite.Sprite):
             self.rect.width - 2 * (self.image.get_width() / 7),
             self.image.get_height() / 4,
         )
-
-        tile_size = self.rect.width
+        self.image = self.player_sprites[self.sprite_type][self.image_idx][
+            self.sprite_flip_x
+        ]
 
         # only for testing
+        tile_size = self.rect.width
         pygame.draw.rect(
             self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
         )
 
-    def animate(self, pressed_keys):
+    def animate(self):
         if pygame.time.get_ticks() - self.animation_timer >= 200:
-            sprite_type = (
-                self.player_sprites["idle"]
-                if len(pressed_keys) == 0
-                else self.player_sprites["move"]
-            )
             self.animation_timer = pygame.time.get_ticks()
-            self.image_idx = (
-                self.image_idx + 1 if self.image_idx < len(sprite_type) - 1 else 0
+            self.image_idx = (self.image_idx + 1) % len(
+                self.player_sprites[self.sprite_type]
             )
-            self.image = sprite_type[self.image_idx][self.sprite_flip_x]
 
     def move(self, grid, pressed_keys, screen_size):
         if len(pressed_keys) > 0:
@@ -372,7 +371,7 @@ class GameObject:
             self.img_sprites["tile"]["explode"],
         )
         self.player_group = pygame.sprite.Group()
-        self.player_group.add(Player(self.user_id, 5, self.img_sprites["player"]))
+        self.player_group.add(Player(self.user_id, 8, self.img_sprites["player"]))
         self.clock = pygame.time.Clock()
         self.running = True
         self.pressed_keys = []
