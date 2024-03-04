@@ -1,0 +1,8 @@
+{
+    "rows": 3,
+    "cols": 6,
+    "transform":{
+        "flip_x": true,
+        "idx": 2
+        }
+}
