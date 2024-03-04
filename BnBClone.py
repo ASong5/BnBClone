@@ -7,20 +7,9 @@ from utils.types import Assets, Bubbles, Characters, Explosions
 
 faulthandler.enable()
 pygame.init()
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 1200
-SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 
 NUM_TILES = 15
-
-
-EVENTS = {
-    "PLAYER_IDLE": pygame.USEREVENT + 1,
-    "PLAYER_MOVE": pygame.USEREVENT + 2,
-    "BUBBLE": pygame.USEREVENT + 3,
-}
-
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, row, col, size, tile_sprite):
@@ -443,14 +432,15 @@ class AnimationComponent:
 
 
 class GameObject:
-    def __init__(self, screen_width):
-        self.screen = SCREEN
-        self.sprite_size = screen_width / NUM_TILES
+    def __init__(self, screen_size):
+        pygame.init()
+        self.screen = pygame.display.set_mode((screen_size, screen_size))
+        self.sprite_size = screen_size / NUM_TILES
         self.user_id = 0
         self.assets = self.load_assets()
         self.grid = Grid(
             NUM_TILES,
-            screen_width,
+            screen_size,
             self.assets[Assets.TILE]["default"].frames,
         )
         self.player_group = pygame.sprite.Group()
@@ -558,5 +548,5 @@ class GameObject:
         pygame.quit()
 
 
-game = GameObject(SCREEN_WIDTH)
+game = GameObject(1200)
 game.start()
