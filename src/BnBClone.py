@@ -1,76 +1,49 @@
 import pygame
 import faulthandler
-from utils import spritesheets
-from utils.types import Assets, Bubbles, Characters, Explosions
+import utils.config as config
+
 from grid import Grid
-from entities import Player, AnimationComponent
-from assets import Asset
+from entities import Player
+from utils.animations import AnimationComponent
+from utils.assets import Asset, AssetStore
 
 faulthandler.enable()
-pygame.init()
 
-NUM_TILES = 15
 
 class GameObject:
-    def __init__(self, screen_size):
+    def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((screen_size, screen_size))
-        self.sprite_size = screen_size / NUM_TILES
+        self.screen = pygame.display.set_mode(config.RESOLUTION)
+        self.sprite_size = config.GRID_SIZE / config.NUM_TILES
+        self.asset_store = AssetStore(self.sprite_size, config.GRID_SIZE)
         self.user_id = 0
-        self.assets = self.load_assets()
-        self.grid = Grid(
-            NUM_TILES,
-            screen_size,
-            self.assets[Assets.TILE]["default"].frames,
-        )
+        self.grid = Grid(config.NUM_TILES, config.SPRITE_SIZE, self.asset_store)
         self.player_group = pygame.sprite.Group()
-        self.player_group.add(
-            Player(self.user_id, 4, self.assets[Assets.CHARACTER][Characters.DEFAULT])
-        )
+        self.player_group.add(Player(self.asset_store, self.user_id, 4))
         self.clock = pygame.time.Clock()
         self.running = True
         self.pressed_keys = []
 
     def update(self):
-        for asset_type, asset_dict in self.assets.items():
+        for asset_type, asset_dict in self.asset_store["spritesheets"].items():
             for _, asset in asset_dict.items():
                 if (
                     isinstance(asset, Asset)
                     and asset_type in AnimationComponent.mappings
                 ):
-                    asset.animation.update_frame(
-                        AnimationComponent.mappings[asset_type]["animation_duration"]
-                    )
-        self.grid.update(self.assets[Assets.EXPLOSION][Explosions.DEFAULT])
-        self.player_group.update(self.grid, self.pressed_keys, self.screen.get_size())
+                    asset.animation.update_frame()
+        self.grid.update(self.asset_store)
+        self.player_group.update(self.grid, config.GRID_SIZE, self.pressed_keys)
 
         for player in self.player_group.sprites():
             if player.is_hit(self.grid):
                 player.rect.x = 0
                 player.rect.y = 0
 
-    def load_assets(self):
-        assets = {}
-        spritesheet_list = spritesheets.Spritesheets("assets/spritesheets")
-        for asset_type, asset_dict in spritesheet_list.sheets.items():
-            for asset_name, asset_data in asset_dict.items():
-                asset_spritesheet = asset_data.get("spritesheet")
-                if asset_spritesheet:
-                    if asset_type not in assets:
-                        assets[asset_type] = {}
-                    new_asset = Asset(
-                        asset_spritesheet.get_sprites(
-                            self.sprite_size, self.sprite_size
-                        ),
-                        asset_type,
-                        asset_name,
-                    )
-                    assets[asset_type][asset_name] = new_asset
-        return assets
-
     def draw(self):
         self.screen.fill("black")
-        self.grid.tile_group.draw(self.screen)
+
+        self.screen.blit(self.asset_store["static"]["maps"]["default"].image, (0, 0))
 
         for tile_group in self.grid.explosion_group:
             tile_group[0].draw(self.screen)
@@ -105,10 +78,7 @@ class GameObject:
                     if event.key == pygame.K_SPACE:
                         for player in self.player_group.sprites():
                             if player.id == self.user_id:
-                                player.drop_bubble(
-                                    self.grid,
-                                    self.assets[Assets.BUBBLE][Bubbles.DEFAULT],
-                                )
+                                player.drop_bubble(self.grid, self.asset_store)
                 elif event.type == pygame.KEYUP:
                     if (
                         event.key == pygame.K_UP
@@ -117,10 +87,9 @@ class GameObject:
                         or event.key == pygame.K_LEFT
                     ):
                         self.pressed_keys.remove(event.key)
-
             self.update()
             self.draw()
-            self.clock.tick(165)
+            self.clock.tick(config.FPS)
         self.terminate()
 
     def terminate(self):
@@ -128,5 +97,5 @@ class GameObject:
         pygame.quit()
 
 
-game = GameObject(1200)
+game = GameObject()
 game.start()

@@ -1,18 +1,19 @@
 import pygame
 import os
 import json
-
+from utils.config import convert_indices_to_int
 
 class Spritesheet:
     def __init__(self, path, config_path):
         self.path = path
         self.config = self.__read_config(config_path)
+        self.time_per_frame = self.config.get("time_per_frame")
         self.sheet = pygame.image.load(path).convert_alpha()
         self.width, self.height = self.sheet.get_size()
 
     def __read_config(self, path):
         file = open(path)
-        return json.load(file)
+        return convert_indices_to_int(json.load(file))
 
     def get_sprites(
         self,

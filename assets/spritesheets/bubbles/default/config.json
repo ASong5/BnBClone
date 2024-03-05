@@ -1,6 +1,7 @@
 {
     "rows": 3,
     "cols": 8,
+    "time_per_frame": 200,
     "colorkey": [26, 122, 62, 255],
     "ignore_colors": [[36, 82, 59]],
     "only": [0]

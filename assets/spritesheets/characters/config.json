@@ -1,6 +1,7 @@
 {
     "rows": 3,
     "cols": 6,
+    "time_per_frame": 200,
     "transform":{
         "flip_x": true,
         "idx": 2

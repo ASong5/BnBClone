@@ -5,7 +5,7 @@ class Assets(str, Enum):
     BUBBLE = "bubbles"
     TILE = "tiles"
     EXPLOSION = "explosions"
-    OBSTACLE = "obstacles"
+    MAPS = "maps"
 
 class Bubbles(str, Enum):
     DEFAULT = "default"
@@ -14,4 +14,7 @@ class Characters(str, Enum):
     DEFAULT = "default" 
 
 class Explosions(str, Enum):
+    DEFAULT = "default" 
+
+class Maps(str, Enum):
     DEFAULT = "default" 
