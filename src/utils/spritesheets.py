@@ -3,6 +3,7 @@ import os
 import json
 from utils.config import convert_indices_to_int
 
+
 class Spritesheet:
     def __init__(self, path, config_path):
         self.path = path
@@ -51,15 +52,24 @@ class Spritesheet:
                     (0, 0),
                     (sprite_width * j, sprite_height * i, sprite_width, sprite_height),
                 )
-                bounding_box = image.get_bounding_rect()
-                if bounding_box.width != 0 or bounding_box.height != 0:
-                    scale_x = output_width / bounding_box.width
-                    scale_y = output_height / bounding_box.height
+                use_bounding_rect = self.config.get("use_bounding_rect", True)
+
+                if use_bounding_rect:
+                    bounding_box = image.get_bounding_rect()
+                else:
+                    bounding_box = image.get_rect()
+
+                box_width = bounding_box.width
+                box_height = bounding_box.height
+
+                if box_width != 0 or box_height != 0:
+                    scale_x = output_width / box_width
+                    scale_y = output_height / box_height
                     scaled_image = pygame.transform.scale(
                         image.subsurface(bounding_box),
                         (
-                            int(bounding_box.width * scale_x),
-                            int(bounding_box.height * scale_y),
+                            int(box_width * scale_x),
+                            int(box_height * scale_y),
                         ),
                     )
 
@@ -101,8 +111,10 @@ class Spritesheet:
                                         pygame.transform.rotate(scaled_image, 270)
                                     )
 
+                            # scaled_image.set_colorkey(pygame.Color(106, 190, 48, 255))
                             sprites.append([scaled_image] + transformed_sprites)
                     else:
+                        # scaled_image.set_colorkey(pygame.Color(106, 190, 48, 255))
                         sprites.append(scaled_image)
             sprite_list.append(sprites)
         return sprite_list

@@ -1,4 +1,5 @@
 import pygame
+from item import BubbleItem
 from utils.types import Assets, Bubbles, Characters, Explosions
 import utils.animations
 from enum import Enum
@@ -20,18 +21,18 @@ class Bubble(pygame.sprite.Sprite):
         self.row = row
         self.col = col
         self.image = self.asset.get_current_frame()
-        self.rect = self.image.get_rect()
+        self.size = self.image.get_width()
+        self.rect = self.image.get_rect(
+            center=(
+                self.col * self.size + (self.size / 2),
+                self.row * self.size + (self.size / 2),
+            )
+        )
         self.explosion_range = explosion_range
 
     def update(self):  # type: ignore
         self.image = self.asset.get_current_frame()
-        tile_size = self.rect.width
-        self.rect = self.image.get_rect(
-            center=(
-                self.col * tile_size + (tile_size / 2),
-                self.row * tile_size + (tile_size / 2),
-            )
-        )
+        
 
 
 class Explosion(pygame.sprite.Sprite):
@@ -64,7 +65,6 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, asset_store, id, vel):
         super(Player, self).__init__()
         self.asset = asset_store["spritesheets"][Assets.CHARACTER][Characters.DEFAULT]
-
         self.id = id
         self.sprite_flip_x = 0
         self.animation_state = utils.animations.AnimationComponent.mappings[
@@ -81,6 +81,7 @@ class Player(pygame.sprite.Sprite):
         )
         self.vel = vel
         self.num_bubbles = 1
+
         self.explosion_range = 7
         self.animation_timer = pygame.time.get_ticks()
 
@@ -152,24 +153,36 @@ class Player(pygame.sprite.Sprite):
             self.rect.x += dx * self.vel
             self.rect.y += dy * self.vel
 
-    def is_hit(self, grid):
+    def is_collide(self, grid):
         total_overlap_area = 0
         player_area = self.hitbox.width * self.hitbox.height
+        # TODO: include bubble group to check when playes collides with bubbles as well
+        groups = [group[0] for group in grid.explosion_group] + [grid.item_group]
+        collided_sprites = []
 
-        for group in grid.explosion_group:
-            for tile in group[0]:
-                if self.hitbox.colliderect(tile.rect):
-                    overlap_rect = self.hitbox.clip(tile.rect)
+        for group in groups:
+            for sprite in group:
+                if self.hitbox.colliderect(sprite.rect):
+                    overlap_rect = self.hitbox.clip(sprite.rect)
                     total_overlap_area += overlap_rect.width * overlap_rect.height
                     if total_overlap_area / player_area > 0.66:
-                        return True
-        return False
+                        collided_sprites.append(sprite)
+        return collided_sprites
 
     def drop_bubble(self, grid, asset_store):
-        if self.num_bubbles > 0:
-            coord = grid.get_coord(self.rect.x, self.rect.y)
-            if not grid.has_bubble(*coord) and not grid.has_obstacle(*coord):
-                grid.add_bubble(
-                    Bubble(asset_store, *coord, self.id, self.explosion_range)  # type: ignore
-                )
-                grid.toggle_bubble(*coord)
+        curr_pos = grid.get_coord(self.rect.x, self.rect.y)
+        if not grid.get_tile(curr_pos[0], curr_pos[1]).has_bubble:
+            if self.num_bubbles > 0:
+                coord = grid.get_coord(self.rect.x, self.rect.y)
+                if not grid.has_bubble(*coord) and not grid.has_obstacle(*coord):
+                    grid.add_bubble(
+                        Bubble(asset_store, *coord, self.id, self.explosion_range)  # type: ignore
+                    )
+                    grid.toggle_bubble(*coord)
+
+                self.num_bubbles -= 1
+
+    def pick_up_item(self, item):
+        if isinstance(item, BubbleItem):
+            item.kill()
+            self.num_bubbles += 1
