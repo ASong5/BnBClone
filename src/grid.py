@@ -1,8 +1,9 @@
+import random
 import pygame
 import math
 import entities
 import item
-from utils.types import Assets, Maps
+from utils.types import Assets, Maps, Blocks
 from item import BubbleItem
 
 
@@ -24,8 +25,9 @@ class Grid:
         self.tile_is_obstacle_list = config.get("obstacles")
         self.player_group = pygame.sprite.Group()
         self.player_group.add(players)
-        self.explosion_group = []
+        self.explosion_groups = []
         self.item_group = pygame.sprite.Group()
+        self.block_group = pygame.sprite.Group()
         self.bubble_groups = []
         self.__tiles = [
             [
@@ -40,7 +42,15 @@ class Grid:
         for coord in self.tile_is_obstacle_list:
             self.__tiles[coord[0]][coord[1]].has_obstacle = True
 
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                if not self.__tiles[i][j].has_obstacle:
+                    random_val = random.random()
+                    if random_val < .25:
+                        block_type = random.choice(list(Blocks))
+                        self.block_group.add(entities.Block(asset_store, i, j, block_type, self.tile_size))
 
+        
     def toggle_bubble(self, row, col):
         self.__tiles[row][col].has_bubble = not self.__tiles[row][col].has_bubble
 
@@ -115,8 +125,12 @@ class Grid:
             )
             group.add(explosion)
 
+            direction_to_ignore = set()
+
             for i in range(bubble.explosion_range):
                 for j in range(4):
+                    if j in direction_to_ignore:
+                        continue
                     dx, dy = 0, 0
                     if j == 0:
                         dx = i + 1
@@ -131,16 +145,21 @@ class Grid:
                     col = bubble.col + dx
 
                     if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
-                        explosion = entities.Explosion(
-                            asset_store,
-                            row,
-                            col,
-                            entities.Explosion.EXPLODE_DIR(j + 1),
-                            self.tile_size,
-                        )
-                        group.add(explosion)
+                        block = entities.Block.get_block(row, col)
+                        if block:
+                            block.explode(self.item_group)
+                            direction_to_ignore.add(j)
+                        else:
+                            explosion = entities.Explosion(
+                                asset_store,
+                                row,
+                                col,
+                                entities.Explosion.EXPLODE_DIR(j + 1),
+                                self.tile_size,
+                            )
+                            group.add(explosion)
 
-        self.explosion_group.append([group, pygame.time.get_ticks()])
+        self.explosion_groups.append([group, pygame.time.get_ticks()])
 
     def get_tile(self, row, col):
         return self.__tiles[row][col]
@@ -155,7 +174,11 @@ class Grid:
         delete_tile_exploded_groups = []
 
         for player in self.player_group.sprites():
-            for sprite in player.is_collide(self):
+            for sprite in player.is_collide(
+                *[explosion_group[0] for explosion_group in self.explosion_groups],
+                self.item_group,
+                self.block_group,
+            ):
                 if isinstance(sprite, entities.Explosion):
                     player.rect.x = 0
                     player.rect.y = 0
@@ -168,17 +191,17 @@ class Grid:
                 for bubble in bubble_group[0].sprites():
                     self.toggle_bubble(bubble.row, bubble.col)
                     player = self.get_player(bubble.player_id)
-                    if player: 
+                    if player:
                         player.num_bubbles += 1
                 self.explode_tiles(idx, asset_store)
-                    
+
                 bubble_group[0].empty()
                 delete_bubble_groups.append(bubble_group)
 
         for group in delete_bubble_groups:
             self.bubble_groups.remove(group)
 
-        for group in self.explosion_group:
+        for group in self.explosion_groups:
             if pygame.time.get_ticks() - group[1] >= 500:
                 group[0].empty()
                 delete_tile_exploded_groups.append(group)
@@ -186,6 +209,7 @@ class Grid:
                 group[0].update()
 
         for group in delete_tile_exploded_groups:
-            self.explosion_group.remove(group)
+            self.explosion_groups.remove(group)
 
         self.item_group.update()
+        self.block_group.update()

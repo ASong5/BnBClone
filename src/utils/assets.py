@@ -64,18 +64,22 @@ class AssetStore(dict):
                 asset_type = path_tokens[-2]
                 asset_name = path_tokens[-1]
                 if file.split(".")[-1] == "png":
-                    if asset_type == "maps":
-                        if asset_type not in self:
-                            self["static"][asset_type] = {}
-                        map = pygame.transform.scale(
-                            pygame.image.load(os.path.join(root, file)).convert_alpha(),
-                            (self.grid_size, self.grid_size),
-                        )
-                        config_file = os.path.join(root, "config.json") 
-                        config = json.load(open(config_file)) if os.path.exists(config_file) else None
-                        new_asset = Asset(asset_type, asset_name, image=map, config=config)
-                        self["static"][asset_type][asset_name] = new_asset
-
+                    if asset_type not in self["static"]:
+                        self["static"][asset_type] = {}
+                    config_file = os.path.join(root, "config.json") 
+                    config = json.load(open(config_file)) if os.path.exists(config_file) else None
+                    width = height = self.asset_size
+                    if config:
+                        x_scale_offset = config.get("x_scale_offset")
+                        y_scale_offset = config.get("y_scale_offset")
+                        width += x_scale_offset if x_scale_offset is not None else 0
+                        height += y_scale_offset if y_scale_offset is not None else 0
+                    map = pygame.transform.scale(
+                        pygame.image.load(os.path.join(root, file)).convert_alpha(),
+                        (self.grid_size if asset_type == "maps" else width, self.grid_size if asset_type == "maps" else height),
+                    )
+                    new_asset = Asset(asset_type, asset_name, image=map, config=config)
+                    self["static"][asset_type][asset_name] = new_asset
 
     def __getitem__(self, key):
         return super().__getitem__(key)

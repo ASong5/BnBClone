@@ -7,6 +7,7 @@ class Assets(str, Enum):
     EXPLOSION = "explosions"
     MAPS = "maps"
     ITEMS = "items"
+    BLOCKS = "blocks"
 
 class Bubbles(str, Enum):
     DEFAULT = "default"
@@ -22,3 +23,8 @@ class Maps(str, Enum):
 
 class Items(str, Enum):
     BUBBLE = "bubble"
+
+class Blocks(str, Enum):
+    DEFAULT = "default"
+    DEFAULT_1 = "default1"
+    DEFAULT_2 = "default2"

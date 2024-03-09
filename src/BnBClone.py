@@ -5,7 +5,6 @@ import utils.config as config
 from grid import Grid
 import entities
 from utils.assets import Asset, AssetStore
-from utils.types import Items
 
 faulthandler.enable()
 
@@ -25,9 +24,6 @@ class GameObject:
         self.running = True
         self.pressed_keys = []
 
-        self.grid.drop_item(self.asset_store, 7, 7, Items.BUBBLE)
-
-
     def update(self):
         for _, asset_dict in self.asset_store["spritesheets"].items():
             for _, asset in asset_dict.items():
@@ -38,8 +34,6 @@ class GameObject:
         self.grid.update(self.asset_store)
         self.grid.player_group.update(self.grid, config.GRID_SIZE, self.pressed_keys)
 
-
-
     def draw(self):
         self.screen.fill("black")
 
@@ -47,7 +41,9 @@ class GameObject:
         
         self.grid.item_group.draw(self.screen)
 
-        for tile_group in self.grid.explosion_group:
+        self.grid.block_group.draw(self.screen)
+
+        for tile_group in self.grid.explosion_groups:
             tile_group[0].draw(self.screen)
 
         for bubble_group in self.grid.bubble_groups:
