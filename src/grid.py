@@ -1,9 +1,8 @@
-import random
 import pygame
 import math
 import entities
 import item
-from utils.types import Assets, Maps, Blocks
+from utils.types import Assets
 from item import BubbleItem
 
 
@@ -14,51 +13,41 @@ class Tile:
         self.col = col
         self.size = size
         self.has_bubble = False
-        self.has_obstacle = False
-
 
 class Grid:
-    def __init__(self, grid_size, tile_size, asset_store, players):
+    def __init__(self, grid_size, tile_size, asset_store, players, tile_map):
         self.grid_size = grid_size
         self.tile_size = tile_size
-        config = asset_store["static"][Assets.MAPS][Maps.DEFAULT].config
-        self.tile_is_obstacle_list = config.get("obstacles")
+        self.tile_map = tile_map
         self.player_group = pygame.sprite.Group()
         self.player_group.add(players)
         self.explosion_groups = []
         self.item_group = pygame.sprite.Group()
         self.block_group = pygame.sprite.Group()
         self.bubble_groups = []
+        self.obstacle_group = pygame.sprite.Group()
         self.__tiles = [
             [
                 Tile(row, col, self.tile_size)
-                if (row + col) % 2 == 0
-                else Tile(row, col, self.tile_size)
                 for col in range(self.grid_size)
             ]
             for row in range(self.grid_size)
         ]
 
-        for coord in self.tile_is_obstacle_list:
-            self.__tiles[coord[0]][coord[1]].has_obstacle = True
-
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
-                if not self.__tiles[i][j].has_obstacle:
-                    random_val = random.random()
-                    if random_val < .25:
-                        block_type = random.choice(list(Blocks))
-                        self.block_group.add(entities.Block(asset_store, i, j, block_type, self.tile_size))
-
+        for row in range(self.grid_size):
+            for col in range(self.grid_size):
+                if self.tile_map[row][col]:
+                    asset_data = self.tile_map[row][col]
+                    if asset_data[0] == Assets.BLOCKS:
+                        self.block_group.add(entities.Block(asset_store, row, col, asset_data[1], self.tile_size))
+                    elif asset_data[0] == Assets.OBSTACLES:
+                        self.obstacle_group.add(entities.Obstacle(asset_store, row, col, asset_data[0], asset_data[1], self.tile_size))
         
     def toggle_bubble(self, row, col):
         self.__tiles[row][col].has_bubble = not self.__tiles[row][col].has_bubble
 
     def has_bubble(self, row, col):
         return self.__tiles[row][col].has_bubble
-
-    def has_obstacle(self, row, col):
-        return self.__tiles[row][col].has_obstacle
 
     def add_bubble(self, bubble_to_add):
         groups_to_merge = set()
@@ -145,9 +134,10 @@ class Grid:
                     col = bubble.col + dx
 
                     if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
-                        block = entities.Block.get_block(row, col)
-                        if block:
-                            block.explode(self.item_group)
+                        obstacle = entities.Obstacle.get_block(row, col)
+                        if isinstance(obstacle, entities.Obstacle):
+                            if isinstance(obstacle, entities.Block):
+                                obstacle.explode(self.item_group)
                             direction_to_ignore.add(j)
                         else:
                             explosion = entities.Explosion(
@@ -213,3 +203,4 @@ class Grid:
 
         self.item_group.update()
         self.block_group.update()
+        self.obstacle_group.update()

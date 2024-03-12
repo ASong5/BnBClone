@@ -5,7 +5,6 @@ from utils.types import Assets, Bubbles, Characters, Explosions, Items
 import utils.animations
 from enum import Enum
 
-
 class EntityObject(pygame.sprite.Sprite):
     def __init__(self, image, entity_type):
         super(EntityObject, self).__init__()
@@ -14,13 +13,12 @@ class EntityObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
 
-class Block(pygame.sprite.Sprite):
-    blocks = {}
-
-    def __init__(self, asset_store, row, col, block_type, tile_size):
-        super(Block, self).__init__()
+class Obstacle(pygame.sprite.Sprite):
+    obstacles = {}
+    def __init__(self, asset_store, row, col, obstacle_type, obstacle_name, tile_size):
+        super(Obstacle, self).__init__()
         self.asset_store = asset_store
-        self.asset = self.asset_store["static"][Assets.BLOCKS][block_type]
+        self.asset = self.asset_store["static"][obstacle_type][obstacle_name]
         self.row = row
         self.col = col
         self.x_offset = self.asset.config.get("x_pos_offset")
@@ -37,23 +35,31 @@ class Block(pygame.sprite.Sprite):
             self.col * tile_size, self.row * tile_size, tile_size, tile_size
         )
 
-        Block.blocks[(row, col)] = self
+        Obstacle.obstacles[(row, col)] = self
+
+    def update(self):  # type: ignore
+        self.image = self.asset.image
+
+    @classmethod
+    def get_block(cls, row, col):
+        return cls.obstacles.get((row, col), None)
+
+
+class Block(Obstacle):
+    def __init__(self, asset_store, row, col, block_name, tile_size):
+        super(Block, self).__init__(asset_store, row, col, Assets.BLOCKS, block_name, tile_size)
 
     def update(self):  # type: ignore
         self.image = self.asset.image
 
     def explode(self, group):
         self.kill()
-        Block.blocks.pop((self.row, self.col))
+        Block.obstacles.pop((self.row, self.col))
         item_drop_potential = random.random()
         if item_drop_potential < 0.25:
             item_type = random.choice(list(Items))
             if item_type == Items.BUBBLE:
                 group.add(BubbleItem(self.asset_store, self.row, self.col, item_type))
-
-    @classmethod
-    def get_block(cls, row, col):
-        return cls.blocks.get((row, col), None)
 
 
 class Bubble(pygame.sprite.Sprite):
@@ -196,7 +202,7 @@ class Player(pygame.sprite.Sprite):
             self.rect.height / 4,
         )
 
-        collided_blocks = self.is_collide(grid.block_group)
+        collided_groups = self.is_collide(grid.block_group, grid.obstacle_group)
         if not (
             (
                 grid.get_coord(tmp_x, tmp_y) == new_coord
@@ -205,21 +211,22 @@ class Player(pygame.sprite.Sprite):
             and (
                 0 <= new_pos[0] <= grid_size - self.rect.width
                 and 0 <= new_pos[1] <= grid_size - self.rect.height
-                and not grid.has_obstacle(*new_coord)
             )
         ):
             self.rect.x = tmp_x
             self.rect.y = tmp_y
 
-        if collided_blocks:
+        if collided_groups:
             self.rect.x = tmp_x
             self.rect.y = tmp_y
-            for block in collided_blocks:
+            for block in collided_groups:
                 threshold = self.rect.height / 2
                 if dx == 1 or dx == -1:
                     if block.tile_rect.y + self.rect.height - self.rect.y <= threshold:
                         self.rect.y += self.vel
-                    elif self.rect.y + self.rect.height - block.tile_rect.y <= threshold:
+                    elif (
+                        self.rect.y + self.rect.height - block.tile_rect.y <= threshold
+                    ):
                         self.rect.y -= self.vel
                 elif dy == 1 or dy == -1:
                     if block.tile_rect.x + self.rect.width - self.rect.x <= threshold:
@@ -237,7 +244,7 @@ class Player(pygame.sprite.Sprite):
                 sprite_rect = sprite.rect
                 if isinstance(sprite, Bubble):
                     threshold = 0.5
-                elif isinstance(sprite, Block):
+                elif isinstance(sprite, Block) or isinstance(sprite, Obstacle):
                     player_area = self.rect.width * self.rect.height
                     sprite_rect = sprite.tile_rect
                     rect = self.rect
@@ -256,7 +263,7 @@ class Player(pygame.sprite.Sprite):
         if not grid.get_tile(curr_pos[0], curr_pos[1]).has_bubble:
             if self.num_bubbles > 0:
                 coord = grid.get_coord(self.rect.x, self.rect.y)
-                if not grid.has_bubble(*coord) and not grid.has_obstacle(*coord):
+                if not grid.has_bubble(*coord):
                     grid.add_bubble(
                         Bubble(asset_store, *coord, self.id, self.explosion_range)  # type: ignore
                     )

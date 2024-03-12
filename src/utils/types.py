@@ -8,6 +8,7 @@ class Assets(str, Enum):
     MAPS = "maps"
     ITEMS = "items"
     BLOCKS = "blocks"
+    OBSTACLES = "obstacles"
 
 class Bubbles(str, Enum):
     DEFAULT = "default"
@@ -23,6 +24,9 @@ class Maps(str, Enum):
 
 class Items(str, Enum):
     BUBBLE = "bubble"
+
+class Obstacles(str, Enum):
+    POST = "post"
 
 class Blocks(str, Enum):
     DEFAULT = "default"

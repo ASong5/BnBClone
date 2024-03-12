@@ -1,6 +1,6 @@
 {
-    "screen_resolution": [1200, 1200],
-    "grid_size": 1200,
+    "screen_resolution": [1920, 1080],
+    "grid_size": 1080,
     "num_tiles": 15,
     "fps": 165
 }
