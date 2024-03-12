@@ -62,8 +62,6 @@ class GameObject:
 
         self.grid.block_group.draw(self.screen)
 
-        self.grid.obstacle_group.draw(self.screen)
-
         for tile_group in self.grid.explosion_groups:
             tile_group[0].draw(self.screen)
 
@@ -71,6 +69,8 @@ class GameObject:
             bubble_group[0].draw(self.screen)
 
         self.grid.player_group.draw(self.screen)
+
+        self.grid.obstacle_group.draw(self.screen)
 
         # only for testing
         pygame.draw.rect(
