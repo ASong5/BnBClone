@@ -193,7 +193,6 @@ class MapCreator:
 
     def update(self):
         self.asset_panel.update()
-        self.set_mouse_cursor()
 
     def draw(self):
         self.screen.fill("black")
@@ -207,6 +206,7 @@ class MapCreator:
         pygame.display.flip()
 
     def start(self):
+        self.set_mouse_cursor()
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -219,6 +219,7 @@ class MapCreator:
                     asset = self.asset_panel.get_clicked_asset(mouse_coord)
                     if asset:
                         self.selected_asset = asset
+                        self.set_mouse_cursor()
 
             mouse_coord = pygame.mouse.get_pos()
             if pygame.mouse.get_pressed()[0]:
