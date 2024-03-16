@@ -127,7 +127,7 @@ class Spritesheets:
         config_path = ""
         spritesheets = {}
         for root, _, files in os.walk(self.path):
-            path_tokens = root.split("/")
+            path_tokens = root.split(os.sep)
             for file in files:
                 if file == "config.json":
                     config_path = os.path.join(root, file)
@@ -141,3 +141,4 @@ class Spritesheets:
                         os.path.join(root, file), config_path
                     )
         return spritesheets
+
