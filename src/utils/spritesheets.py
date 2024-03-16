@@ -111,10 +111,8 @@ class Spritesheet:
                                         pygame.transform.rotate(scaled_image, 270)
                                     )
 
-                            # scaled_image.set_colorkey(pygame.Color(106, 190, 48, 255))
                             sprites.append([scaled_image] + transformed_sprites)
                     else:
-                        # scaled_image.set_colorkey(pygame.Color(106, 190, 48, 255))
                         sprites.append(scaled_image)
             sprite_list.append(sprites)
         return sprite_list

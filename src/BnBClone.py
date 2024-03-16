@@ -1,11 +1,12 @@
-import pygame
+import faulthandler
 import os
 import pickle
-import faulthandler
-import utils.config as config
 
-from grid import Grid
+import pygame
+
 import entities
+import utils.config as config
+from grid import Grid
 from utils.assets import Asset, AssetStore
 
 faulthandler.enable()
@@ -57,6 +58,8 @@ class GameObject:
         self.screen.fill("black")
 
         self.screen.blit(self.asset_store["static"]["maps"]["default"].image, (0, 0))
+
+        self.screen.blit(self.asset_store["spritesheets"]["bubble-trapped"]["default"].get_current_frame(), (0, 0))
 
         self.grid.item_group.draw(self.screen)
 

@@ -1,9 +1,12 @@
-import pygame
 import random
-from item import BubbleItem
-from utils.types import Assets, Bubbles, Characters, Explosions, Items
-import utils.animations
 from enum import Enum
+
+import pygame
+
+import utils.animations
+from item import BubbleItem
+from utils.types import Assets, Bubble_Trapped, Bubbles, Characters, Explosions, Items
+
 
 class EntityObject(pygame.sprite.Sprite):
     def __init__(self, image, entity_type):
@@ -127,6 +130,11 @@ class Player(pygame.sprite.Sprite):
             self.rect.width - 2 * (self.image.get_width() / 7),
             self.image.get_height() / 4,
         )
+        self.trapped_bubble_asset = asset_store["spritesheets"][Assets.BUBBLE_TRAPPED][Bubble_Trapped.DEFAULT]
+        self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame() 
+        self.trapped_bubble_image_rect = self.trapped_bubble_image.get_rect()
+        self.is_trapped = False
+
         self.vel = vel
         self.num_bubbles = 1
 
@@ -149,6 +157,11 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(
             self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
         )
+
+    def trap_player(self):
+        if not self.is_trapped:
+            self.is_trapped = True
+            self.vel = 1
 
     def move(self, grid, grid_size, pressed_keys):
         if len(pressed_keys) > 0:

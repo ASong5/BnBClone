@@ -16,10 +16,10 @@ class Image(pygame.sprite.Sprite):
         self.original_pos = [self.rect.x, self.rect.y]
 
         if asset:
-             x_offset = asset.config.get("x_pos_offset")
-             y_offset = asset.config.get("y_pos_offset")
-             self.rect.x += x_offset if x_offset is not None else 0
-             self.rect.y += y_offset if y_offset is not None else 0
+            x_offset = asset.config.get("x_pos_offset")
+            y_offset = asset.config.get("y_pos_offset")
+            self.rect.x += x_offset if x_offset is not None else 0
+            self.rect.y += y_offset if y_offset is not None else 0
 
     def update(self):  # type: ignore
         pass

@@ -170,8 +170,7 @@ class Grid:
                 self.block_group,
             ):
                 if isinstance(sprite, entities.Explosion):
-                    player.rect.x = 0
-                    player.rect.y = 0
+                    player.trap_player()
                 elif isinstance(sprite, item.Item):
                     player.pick_up_item(sprite)
 

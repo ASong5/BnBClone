@@ -9,8 +9,12 @@ class Assets(str, Enum):
     ITEMS = "items"
     BLOCKS = "blocks"
     OBSTACLES = "obstacles"
+    BUBBLE_TRAPPED = "bubble-trapped"
 
 class Bubbles(str, Enum):
+    DEFAULT = "default"
+
+class Bubble_Trapped(str, Enum):
     DEFAULT = "default"
 
 class Characters(str, Enum):

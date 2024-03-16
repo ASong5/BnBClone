@@ -13,9 +13,6 @@ class AnimationComponent:
             },
         },
         Assets.BUBBLE: {"idle": 0,},
-        Assets.EXPLOSION: {
-            "animation_type": {"explode": 2, "fizzle_one": 1, "fizzle_two": 0},
-        },
     }
 
     def __init__(self, frames, asset_type, time_per_frame):
