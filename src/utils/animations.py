@@ -2,21 +2,11 @@ from utils.types import Assets
 import entities
 import pygame
 
-class AnimationComponent:
-    mappings = {
-        Assets.CHARACTER: {
-            "animation_type": {
-                "idle": -1,
-                "move_down": 0,
-                "move_up": 1,
-                "move_side": 2,
-            },
-        },
-        Assets.BUBBLE: {"idle": 0,},
-    }
 
-    def __init__(self, frames, asset_type, time_per_frame):
+class AnimationComponent:
+    def __init__(self, frames, asset_type, time_per_frame, animation_mappings):
         self.frames = frames
+        self.animation_mappings = animation_mappings
         self.animation_type_idx = 0
         self.frame_idx = 0
         self.asset_type = asset_type
@@ -42,30 +32,20 @@ class AnimationComponent:
                     len(self.frames[self.animation_type_idx]) - offset
                 )
 
-    def get_frame(self, entity=None):
-        if isinstance(entity, entities.Player):
-            if (
-                entity.animation_state
-                != self.mappings[Assets.CHARACTER]["animation_type"]["idle"]
-            ):
-                self.animation_type_idx = entity.animation_state
-            if (
-                entity.animation_state
-                == self.mappings[Assets.CHARACTER]["animation_type"]["move_side"]
-            ):
-                return self.frames[self.animation_type_idx][self.frame_idx][
-                    entity.sprite_flip_x
-                ]
-            elif (
-                entity.animation_state
-                == self.mappings[Assets.CHARACTER]["animation_type"]["idle"]
-            ):
-                return self.frames[self.animation_type_idx][0][entity.sprite_flip_x]
+    def get_frame(self, entity=None, idx=None, flip_x=False):
+        if idx is not None:
+            if idx != self.animation_mappings["idle"]:
+                self.animation_type_idx = idx
             else:
-                return self.frames[self.animation_type_idx][self.frame_idx][
-                    entity.sprite_flip_x
-                ]
-
+                self.frame_idx = 0
+            if isinstance(self.frames[self.animation_type_idx][self.frame_idx], list):
+                if flip_x:
+                    return self.frames[self.animation_type_idx][self.frame_idx][1]
+                else:
+                    return self.frames[self.animation_type_idx][self.frame_idx][0]
+            else:
+                return self.frames[self.animation_type_idx][self.frame_idx]
+           
         elif isinstance(entity, entities.Explosion):
             if entity.explosion_dir == entities.Explosion.EXPLODE_DIR.DOWN:
                 return self.frames[0][self.frame_idx][0]
@@ -80,6 +60,3 @@ class AnimationComponent:
 
         else:
             return self.frames[self.animation_type_idx][self.frame_idx]
-
-
-

@@ -24,8 +24,12 @@ class Asset:
                 raise ValueError("image must be an instance of pygame.Surface")
             self.image = image
 
-    def get_current_frame(self, entity=None):
-        return self.animation.get_frame(entity)
+    def get_current_frame(self, entity=None, idx=None, flip_x=None):
+        return self.animation.get_frame(entity, idx, flip_x)
+
+    def get_animation_mapping(self, animation_type):
+        if self.animation:
+            return self.animation.animation_mappings[animation_type]
 
 
 class AssetStore(dict):
@@ -53,6 +57,7 @@ class AssetStore(dict):
                             ),
                             asset_type,
                             asset_spritesheet.time_per_frame,
+                            asset_spritesheet.animation_mappings
                         ),
                     )
                     self["spritesheets"][asset_type][asset_name] = new_asset

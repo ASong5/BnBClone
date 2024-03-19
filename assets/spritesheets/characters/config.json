@@ -1,9 +1,11 @@
 {
-    "rows": 3,
+    "rows": 4,
     "cols": 6,
+    "animation_mappings": {"idle": -1, "move_down": 0, "move_up": 1,          "move_side": 2, "trapped": 3},
     "time_per_frame": 200,
     "transform":{
         "flip_x": true,
         "idx": 2
-        }
+        },
+    "ignore_bounding_rect": [3]
 }

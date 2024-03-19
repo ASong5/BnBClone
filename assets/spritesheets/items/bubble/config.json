@@ -2,5 +2,5 @@
     "rows": 1,
     "cols": 22,
     "time_per_frame": 100,
-    "use_bounding_rect": false
+    "ignore_bounding_rect": true
 }

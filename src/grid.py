@@ -26,6 +26,7 @@ class Grid:
         self.block_group = pygame.sprite.Group()
         self.bubble_groups = []
         self.obstacle_group = pygame.sprite.Group()
+        self.trapped_bubble_group = pygame.sprite.Group()
         self.__tiles = [
             [
                 Tile(row, col, self.tile_size)
@@ -170,7 +171,7 @@ class Grid:
                 self.block_group,
             ):
                 if isinstance(sprite, entities.Explosion):
-                    player.trap_player()
+                    player.trap_player(self)
                 elif isinstance(sprite, item.Item):
                     player.pick_up_item(sprite)
 
@@ -200,6 +201,7 @@ class Grid:
         for group in delete_tile_exploded_groups:
             self.explosion_groups.remove(group)
 
+        self.trapped_bubble_group.update()
         self.item_group.update()
         self.block_group.update()
         self.obstacle_group.update()

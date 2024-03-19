@@ -3,7 +3,6 @@ from enum import Enum
 
 import pygame
 
-import utils.animations
 from item import BubbleItem
 from utils.types import Assets, Bubble_Trapped, Bubbles, Characters, Explosions, Items
 
@@ -16,8 +15,44 @@ class EntityObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
 
+class TrappedBubble(pygame.sprite.Sprite):
+    def __init__(self, asset_store, player, time_spawned):
+        super(TrappedBubble, self).__init__()
+        self.asset_store = asset_store
+        self.asset = self.asset_store["spritesheets"][Assets.BUBBLE_TRAPPED][
+            Bubble_Trapped.DEFAULT
+        ]
+        self.player = player
+        self.image = pygame.transform.smoothscale_by(self.asset.get_current_frame(), 1.3)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = self.player.rect.centerx
+        self.rect.centery = self.player.rect.centery
+        self.time_spawned = time_spawned
+
+    def update(self):
+        self.rect.centerx = self.player.rect.centerx
+        self.rect.centery = self.player.rect.centery
+
+        self.image = pygame.transform.smoothscale_by(self.asset.get_current_frame(), 1.3)
+        time_elapsed = pygame.time.get_ticks()
+
+        if time_elapsed - self.time_spawned <= 1000:
+            self.image.set_alpha(190)
+        elif time_elapsed - self.time_spawned <= 5000:
+            alpha_increment_per_ms = (255 - 190) / 4000
+            elapsed_since_transition = time_elapsed - self.time_spawned - 1000
+            alpha_value = min(
+                255, 190 + alpha_increment_per_ms * elapsed_since_transition
+            )
+            self.image.set_alpha(alpha_value)
+        else:
+            self.player.kill()
+            self.kill()
+
+
 class Obstacle(pygame.sprite.Sprite):
     obstacles = {}
+
     def __init__(self, asset_store, row, col, obstacle_type, obstacle_name, tile_size):
         super(Obstacle, self).__init__()
         self.asset_store = asset_store
@@ -50,7 +85,9 @@ class Obstacle(pygame.sprite.Sprite):
 
 class Block(Obstacle):
     def __init__(self, asset_store, row, col, block_name, tile_size):
-        super(Block, self).__init__(asset_store, row, col, Assets.BLOCKS, block_name, tile_size)
+        super(Block, self).__init__(
+            asset_store, row, col, Assets.BLOCKS, block_name, tile_size
+        )
 
     def update(self):  # type: ignore
         self.image = self.asset.image
@@ -115,24 +152,26 @@ class Explosion(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, asset_store, id, vel):
         super(Player, self).__init__()
-        self.asset = asset_store["spritesheets"][Assets.CHARACTER][Characters.DEFAULT]
+        self.asset_store = asset_store
+        self.asset = self.asset_store["spritesheets"][Assets.CHARACTER][
+            Characters.DEFAULT
+        ]
         self.id = id
         self.sprite_flip_x = 0
-        self.animation_state = utils.animations.AnimationComponent.mappings[
-            Assets.CHARACTER
-        ]["animation_type"]["idle"]
-        self.image = self.asset.get_current_frame(self)
+        self.animation_state = self.asset.get_animation_mapping("idle")
+        self.image = self.asset.get_current_frame(idx=self.animation_state, flip_x=self.sprite_flip_x)
         self.image_idx = 0
-        self.rect = self.image.get_rect()
+        self.rect = self.image.get_frect()
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
             self.rect.y + self.image.get_height() * (3 / 4),
             self.rect.width - 2 * (self.image.get_width() / 7),
             self.image.get_height() / 4,
         )
-        self.trapped_bubble_asset = asset_store["spritesheets"][Assets.BUBBLE_TRAPPED][Bubble_Trapped.DEFAULT]
-        self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame() 
-        self.trapped_bubble_image_rect = self.trapped_bubble_image.get_rect()
+        self.trapped_bubble_asset = asset_store["spritesheets"][Assets.BUBBLE_TRAPPED][
+            Bubble_Trapped.DEFAULT
+        ]
+        self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame()
         self.is_trapped = False
 
         self.vel = vel
@@ -142,7 +181,9 @@ class Player(pygame.sprite.Sprite):
         self.animation_timer = pygame.time.get_ticks()
 
     def update(self, grid, grid_size, pressed_keys):  # type: ignore
-        self.image = self.asset.get_current_frame(self)
+        self.image = self.asset.get_current_frame(idx=self.animation_state, flip_x=self.sprite_flip_x)
+        if self.is_trapped:
+            self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame()
         self.move(grid, grid_size, pressed_keys)
 
         self.hitbox = pygame.Rect(
@@ -158,10 +199,14 @@ class Player(pygame.sprite.Sprite):
             self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
         )
 
-    def trap_player(self):
+    def trap_player(self, grid):
         if not self.is_trapped:
+            grid.trapped_bubble_group.add(
+                TrappedBubble(self.asset_store, self, pygame.time.get_ticks())
+            )
             self.is_trapped = True
-            self.vel = 1
+            self.animation_state = self.asset.get_animation_mapping("trapped")
+            self.vel = .05
 
     def move(self, grid, grid_size, pressed_keys):
         if len(pressed_keys) > 0:
@@ -175,33 +220,24 @@ class Player(pygame.sprite.Sprite):
                 case pygame.K_DOWN:
                     self.move_in_direction(grid, grid_size, 0, 1)
         else:
-            self.animation_state = utils.animations.AnimationComponent.mappings[
-                Assets.CHARACTER
-            ]["animation_type"]["idle"]
+            self.animation_state = self.asset.get_animation_mapping("idle" if not self.is_trapped else "trapped")
 
     def move_in_direction(self, grid, grid_size, dx, dy):
         new_pos = (self.rect.x + dx * self.vel, self.rect.y + dy * self.vel)
         new_coord = grid.get_coord(*new_pos)
-        if dx == 1:
-            self.animation_state = utils.animations.AnimationComponent.mappings[
-                Assets.CHARACTER
-            ]["animation_type"]["move_side"]
-            self.sprite_flip_x = 1
-        elif dx == -1:
-            self.animation_state = utils.animations.AnimationComponent.mappings[
-                Assets.CHARACTER
-            ]["animation_type"]["move_side"]
-            self.sprite_flip_x = 0
-        elif dy == 1:
-            self.animation_state = utils.animations.AnimationComponent.mappings[
-                Assets.CHARACTER
-            ]["animation_type"]["move_down"]
-            self.sprite_flip_x = 0
-        elif dy == -1:
-            self.animation_state = utils.animations.AnimationComponent.mappings[
-                Assets.CHARACTER
-            ]["animation_type"]["move_up"]
-            self.sprite_flip_x = 0
+        if not self.is_trapped:
+            if dx == 1:
+                self.animation_state = self.asset.get_animation_mapping("move_side")
+                self.sprite_flip_x = 1
+            elif dx == -1:
+                self.animation_state = self.asset.get_animation_mapping("move_side")
+                self.sprite_flip_x = 0
+            elif dy == 1:
+                self.animation_state = self.asset.get_animation_mapping("move_down")
+                self.sprite_flip_x = 0
+            elif dy == -1:
+                self.animation_state = self.asset.get_animation_mapping("move_up")
+                self.sprite_flip_x = 0
 
         tmp_x = self.rect.x
         tmp_y = self.rect.y

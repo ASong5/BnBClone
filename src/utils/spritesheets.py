@@ -11,6 +11,7 @@ class Spritesheet:
         self.time_per_frame = self.config.get("time_per_frame")
         self.sheet = pygame.image.load(path).convert_alpha()
         self.width, self.height = self.sheet.get_size()
+        self.animation_mappings = self.config.get("animation_mappings")
 
     def __read_config(self, path):
         file = open(path)
@@ -52,12 +53,15 @@ class Spritesheet:
                     (0, 0),
                     (sprite_width * j, sprite_height * i, sprite_width, sprite_height),
                 )
-                use_bounding_rect = self.config.get("use_bounding_rect", True)
 
-                if use_bounding_rect:
-                    bounding_box = image.get_bounding_rect()
-                else:
+                ignore_bounding_rect = self.config.get("ignore_bounding_rect")
+
+                if isinstance(ignore_bounding_rect, list) and i in ignore_bounding_rect:
                     bounding_box = image.get_rect()
+                elif isinstance(ignore_bounding_rect, bool) and ignore_bounding_rect is True:
+                    bounding_box = image.get_rect()
+                else:
+                    bounding_box = image.get_bounding_rect()
 
                 box_width = bounding_box.width
                 box_height = bounding_box.height

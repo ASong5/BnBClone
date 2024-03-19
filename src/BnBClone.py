@@ -59,8 +59,6 @@ class GameObject:
 
         self.screen.blit(self.asset_store["static"]["maps"]["default"].image, (0, 0))
 
-        self.screen.blit(self.asset_store["spritesheets"]["bubble-trapped"]["default"].get_current_frame(), (0, 0))
-
         self.grid.item_group.draw(self.screen)
 
         self.grid.block_group.draw(self.screen)
@@ -73,15 +71,17 @@ class GameObject:
 
         self.grid.player_group.draw(self.screen)
 
+        self.grid.trapped_bubble_group.draw(self.screen)
+
         self.grid.obstacle_group.draw(self.screen)
 
-        # only for testing
-        pygame.draw.rect(
-            self.screen,
-            pygame.Color(0, 255, 0),
-            self.grid.player_group.sprites()[0].hitbox,
-            1,
-        )
+       # # only for testing
+       # pygame.draw.rect(
+       #     self.screen,
+       #     pygame.Color(0, 255, 0),
+       #     self.grid.player_group.sprites()[0].hitbox,
+       #     1,
+       # )
         pygame.display.flip()
 
     def start(self):
