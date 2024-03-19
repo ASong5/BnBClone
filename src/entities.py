@@ -206,6 +206,7 @@ class Player(pygame.sprite.Sprite):
             )
             self.is_trapped = True
             self.animation_state = self.asset.get_animation_mapping("trapped")
+            self.sprite_flip_x = False
             self.vel = .05
 
     def move(self, grid, grid_size, pressed_keys):
