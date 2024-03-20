@@ -12,6 +12,7 @@ class AnimationComponent:
         self.asset_type = asset_type
         self.time_per_frame = time_per_frame
         self.timer = pygame.time.get_ticks()
+        self.prev_animiation_idx = None
 
     def update_frame(self):
         self.frame_idx = self.frame_idx % len(self.frames[self.animation_type_idx])
@@ -34,9 +35,18 @@ class AnimationComponent:
 
     def get_frame(self, entity=None, idx=None, flip_x=False):
         if idx is not None:
-            if idx != self.animation_mappings["idle"]:
+            if (
+                idx != self.animation_mappings["idle"]
+                and idx != self.animation_mappings["trapped"]
+            ):
                 self.animation_type_idx = idx
+            elif idx == self.animation_mappings["trapped"]:
+                if self.animation_type_idx != self.animation_mappings["trapped"]:
+                    self.prev_animiation_idx = self.animation_type_idx
+                    self.animation_type_idx = idx
             else:
+                if self.animation_type_idx == self.animation_mappings["trapped"]:
+                    self.animation_type_idx = self.prev_animiation_idx
                 self.frame_idx = 0
             if isinstance(self.frames[self.animation_type_idx][self.frame_idx], list):
                 if flip_x:
@@ -45,7 +55,7 @@ class AnimationComponent:
                     return self.frames[self.animation_type_idx][self.frame_idx][0]
             else:
                 return self.frames[self.animation_type_idx][self.frame_idx]
-           
+
         elif isinstance(entity, entities.Explosion):
             if entity.explosion_dir == entities.Explosion.EXPLODE_DIR.DOWN:
                 return self.frames[0][self.frame_idx][0]

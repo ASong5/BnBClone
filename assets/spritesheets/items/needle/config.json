@@ -1,0 +1,7 @@
+{
+    "rows": 1,
+    "cols": 22,
+    "colorkey": [139, 139, 139, 255],
+    "time_per_frame": 100,
+    "ignore_bounding_rect": true
+}

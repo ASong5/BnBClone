@@ -3,7 +3,7 @@ from enum import Enum
 
 import pygame
 
-from item import BubbleItem, SpeedShoeItem
+from item import BubbleItem, SpeedShoeItem, NeedleItem
 from utils.types import Assets, Bubble_Trapped, Bubbles, Characters, Explosions, Items
 
 
@@ -32,25 +32,28 @@ class TrappedBubble(pygame.sprite.Sprite):
         self.time_spawned = time_spawned
 
     def update(self):
-        self.rect.centerx = self.player.rect.centerx
-        self.rect.centery = self.player.rect.centery
+        if self.player.is_trapped:
+            self.rect.centerx = self.player.rect.centerx
+            self.rect.centery = self.player.rect.centery
 
-        self.image = pygame.transform.smoothscale_by(
-            self.asset.get_current_frame(), 1.3
-        )
-        time_elapsed = pygame.time.get_ticks()
-
-        if time_elapsed - self.time_spawned <= 1000:
-            self.image.set_alpha(190)
-        elif time_elapsed - self.time_spawned <= 5000:
-            alpha_increment_per_ms = (255 - 190) / 4000
-            elapsed_since_transition = time_elapsed - self.time_spawned - 1000
-            alpha_value = min(
-                255, 190 + alpha_increment_per_ms * elapsed_since_transition
+            self.image = pygame.transform.smoothscale_by(
+                self.asset.get_current_frame(), 1.3
             )
-            self.image.set_alpha(alpha_value)
+            time_elapsed = pygame.time.get_ticks()
+
+            if time_elapsed - self.time_spawned <= 1000:
+                self.image.set_alpha(190)
+            elif time_elapsed - self.time_spawned <= 5000:
+                alpha_increment_per_ms = (255 - 190) / 4000
+                elapsed_since_transition = time_elapsed - self.time_spawned - 1000
+                alpha_value = min(
+                    255, 190 + alpha_increment_per_ms * elapsed_since_transition
+                )
+                self.image.set_alpha(alpha_value)
+            else:
+                self.player.kill()
+                self.kill()
         else:
-            self.player.kill()
             self.kill()
 
 
@@ -108,6 +111,8 @@ class Block(Obstacle):
                 group.add(
                     SpeedShoeItem(self.asset_store, self.row, self.col, item_type)
                 )
+            elif item_type == Items.NEEDLE:
+                group.add(NeedleItem(self.asset_store, self.row, self.col, item_type))
 
 
 class Bubble(pygame.sprite.Sprite):
@@ -158,7 +163,7 @@ class Explosion(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, asset_store, id, vel):
+    def __init__(self, asset_store, id, max_speed):
         super(Player, self).__init__()
         self.asset_store = asset_store
         self.asset = self.asset_store["spritesheets"][Assets.CHARACTER][
@@ -178,24 +183,27 @@ class Player(pygame.sprite.Sprite):
             self.rect.width - 2 * (self.image.get_width() / 7),
             self.image.get_height() / 4,
         )
-        self.trapped_bubble_asset = asset_store["spritesheets"][Assets.BUBBLE_TRAPPED][
-            Bubble_Trapped.DEFAULT
-        ]
-        self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame()
         self.is_trapped = False
 
-        self.vel = vel
+        self.max_speed = max_speed
+        self.vel = self.max_speed
         self.num_bubbles = 1
 
         self.explosion_range = 7
         self.animation_timer = pygame.time.get_ticks()
 
+        self.inventory = []
+
     def update(self, grid, grid_size, pressed_keys):  # type: ignore
         self.image = self.asset.get_current_frame(
-            idx=self.animation_state, flip_x=self.sprite_flip_x
+            idx=self.animation_state
+            if not self.is_trapped
+            else self.asset.get_animation_mapping("trapped"),
+            flip_x=self.sprite_flip_x,
         )
-        if self.is_trapped:
-            self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame()
+        if not self.is_trapped:
+            self.vel = self.max_speed
+
         self.move(grid, grid_size, pressed_keys)
 
         self.hitbox = pygame.Rect(
@@ -205,11 +213,15 @@ class Player(pygame.sprite.Sprite):
             self.image.get_height() / 4,
         )
 
-        # only for testing
-        tile_size = self.rect.width
-        pygame.draw.rect(
-            self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
-        )
+    #        tile_size = self.rect.width
+    #        pygame.draw.rect(
+    #            self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
+    #        )
+
+    def use_item(self, idx):
+        if 0 <= idx < len(self.inventory):
+            if self.inventory[idx].activate(self):
+                self.inventory.pop(idx)
 
     def trap_player(self, grid):
         if not self.is_trapped:
@@ -217,7 +229,6 @@ class Player(pygame.sprite.Sprite):
                 TrappedBubble(self.asset_store, self, pygame.time.get_ticks())
             )
             self.is_trapped = True
-            self.animation_state = self.asset.get_animation_mapping("trapped")
             self.sprite_flip_x = False
             self.vel = 0.05
 
@@ -288,13 +299,13 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = tmp_y
             for entity in collided_groups:
                 threshold = self.rect.height / 3
-                entity_rect = entity.tile_rect if isinstance(entity, Obstacle) else entity.rect
+                entity_rect = (
+                    entity.tile_rect if isinstance(entity, Obstacle) else entity.rect
+                )
                 if dx == 1 or dx == -1:
                     if entity_rect.y + self.rect.height - self.rect.y <= threshold:
                         self.rect.y += 1
-                    elif (
-                        self.rect.y + self.rect.height - entity_rect.y <= threshold
-                    ):
+                    elif self.rect.y + self.rect.height - entity_rect.y <= threshold:
                         self.rect.y -= 1
                 elif dy == 1 or dy == -1:
                     if entity_rect.x + self.rect.width - self.rect.x <= threshold:

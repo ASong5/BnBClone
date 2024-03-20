@@ -21,7 +21,7 @@ class GameObject:
         self.map_name = config.MAP_NAME
         self.user_id = 0
         player_list = []
-        player_list.append(entities.Player(self.asset_store, self.user_id, 5))
+        player_list.append(entities.Player(self.asset_store, self.user_id, 2))
         tile_map = self.fetch_tile_map()
         if tile_map:
             self.grid = Grid(
@@ -101,6 +101,24 @@ class GameObject:
                         for player in self.grid.player_group.sprites():
                             if player.id == self.user_id:
                                 player.drop_bubble(self.grid, self.asset_store)
+
+                    if event.key == pygame.K_1:
+                        for player in self.grid.player_group.sprites():
+                            if player.id == self.user_id:
+                                player.use_item(0)
+                    if event.key == pygame.K_2:
+                        for player in self.grid.player_group.sprites():
+                            if player.id == self.user_id:
+                                player.use_item(1)
+                    if event.key == pygame.K_3:
+                        for player in self.grid.player_group.sprites():
+                            if player.id == self.user_id:
+                                player.use_item(2)
+                    if event.key == pygame.K_4:
+                        for player in self.grid.player_group.sprites():
+                            if player.id == self.user_id:
+                                player.use_item(3)
+
                 elif event.type == pygame.KEYUP:
                     if (
                         event.key == pygame.K_UP

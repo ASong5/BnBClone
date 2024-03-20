@@ -29,6 +29,7 @@ class Maps(str, Enum):
 class Items(str, Enum):
     BUBBLE = "bubble"
     SPEED_SHOE = "speed_shoe"
+    NEEDLE = "needle"
 
 class Obstacles(str, Enum):
     POST = "post"

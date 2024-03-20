@@ -58,7 +58,10 @@ class Spritesheet:
 
                 if isinstance(ignore_bounding_rect, list) and i in ignore_bounding_rect:
                     bounding_box = image.get_rect()
-                elif isinstance(ignore_bounding_rect, bool) and ignore_bounding_rect is True:
+                elif (
+                    isinstance(ignore_bounding_rect, bool)
+                    and ignore_bounding_rect is True
+                ):
                     bounding_box = image.get_rect()
                 else:
                     bounding_box = image.get_bounding_rect()
@@ -128,21 +131,30 @@ class Spritesheets:
         self.sheets = self.__load()
 
     def __load(self):
-        config_path = ""
         spritesheets = {}
+
         for root, _, files in os.walk(self.path):
             path_tokens = root.split(os.sep)
+            config_path = None
             for file in files:
                 if file == "config.json":
                     config_path = os.path.join(root, file)
-                if file.split(".")[-1] == "png" and config_path:
+            for file in files:
+                if file.split(".")[-1] == "png":
+                    if config_path:
+                        spritesheet_config_path = config_path
+                    else:
+                        parent_dir = os.path.dirname(root)
+                        spritesheet_config_path = os.path.join(
+                            parent_dir, "config.json"
+                        )
                     curr_dict = spritesheets
                     for token in path_tokens[2:]:
                         if token not in curr_dict:
                             curr_dict[token] = {}
                         curr_dict = curr_dict[token]
                     curr_dict["spritesheet"] = Spritesheet(
-                        os.path.join(root, file), config_path
+                        os.path.join(root, file), spritesheet_config_path
                     )
-        return spritesheets
 
+        return spritesheets
