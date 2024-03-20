@@ -3,7 +3,7 @@ from enum import Enum
 
 import pygame
 
-from item import BubbleItem
+from item import BubbleItem, SpeedShoeItem
 from utils.types import Assets, Bubble_Trapped, Bubbles, Characters, Explosions, Items
 
 
@@ -23,7 +23,9 @@ class TrappedBubble(pygame.sprite.Sprite):
             Bubble_Trapped.DEFAULT
         ]
         self.player = player
-        self.image = pygame.transform.smoothscale_by(self.asset.get_current_frame(), 1.3)
+        self.image = pygame.transform.smoothscale_by(
+            self.asset.get_current_frame(), 1.3
+        )
         self.rect = self.image.get_rect()
         self.rect.centerx = self.player.rect.centerx
         self.rect.centery = self.player.rect.centery
@@ -33,7 +35,9 @@ class TrappedBubble(pygame.sprite.Sprite):
         self.rect.centerx = self.player.rect.centerx
         self.rect.centery = self.player.rect.centery
 
-        self.image = pygame.transform.smoothscale_by(self.asset.get_current_frame(), 1.3)
+        self.image = pygame.transform.smoothscale_by(
+            self.asset.get_current_frame(), 1.3
+        )
         time_elapsed = pygame.time.get_ticks()
 
         if time_elapsed - self.time_spawned <= 1000:
@@ -79,7 +83,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.image = self.asset.image
 
     @classmethod
-    def get_block(cls, row, col):
+    def get_obstacle(cls, row, col):
         return cls.obstacles.get((row, col), None)
 
 
@@ -100,6 +104,10 @@ class Block(Obstacle):
             item_type = random.choice(list(Items))
             if item_type == Items.BUBBLE:
                 group.add(BubbleItem(self.asset_store, self.row, self.col, item_type))
+            elif item_type == Items.SPEED_SHOE:
+                group.add(
+                    SpeedShoeItem(self.asset_store, self.row, self.col, item_type)
+                )
 
 
 class Bubble(pygame.sprite.Sprite):
@@ -159,7 +167,9 @@ class Player(pygame.sprite.Sprite):
         self.id = id
         self.sprite_flip_x = 0
         self.animation_state = self.asset.get_animation_mapping("idle")
-        self.image = self.asset.get_current_frame(idx=self.animation_state, flip_x=self.sprite_flip_x)
+        self.image = self.asset.get_current_frame(
+            idx=self.animation_state, flip_x=self.sprite_flip_x
+        )
         self.image_idx = 0
         self.rect = self.image.get_frect()
         self.hitbox = pygame.Rect(
@@ -181,7 +191,9 @@ class Player(pygame.sprite.Sprite):
         self.animation_timer = pygame.time.get_ticks()
 
     def update(self, grid, grid_size, pressed_keys):  # type: ignore
-        self.image = self.asset.get_current_frame(idx=self.animation_state, flip_x=self.sprite_flip_x)
+        self.image = self.asset.get_current_frame(
+            idx=self.animation_state, flip_x=self.sprite_flip_x
+        )
         if self.is_trapped:
             self.trapped_bubble_image = self.trapped_bubble_asset.get_current_frame()
         self.move(grid, grid_size, pressed_keys)
@@ -207,7 +219,7 @@ class Player(pygame.sprite.Sprite):
             self.is_trapped = True
             self.animation_state = self.asset.get_animation_mapping("trapped")
             self.sprite_flip_x = False
-            self.vel = .05
+            self.vel = 0.05
 
     def move(self, grid, grid_size, pressed_keys):
         if len(pressed_keys) > 0:
@@ -221,7 +233,9 @@ class Player(pygame.sprite.Sprite):
                 case pygame.K_DOWN:
                     self.move_in_direction(grid, grid_size, 0, 1)
         else:
-            self.animation_state = self.asset.get_animation_mapping("idle" if not self.is_trapped else "trapped")
+            self.animation_state = self.asset.get_animation_mapping(
+                "idle" if not self.is_trapped else "trapped"
+            )
 
     def move_in_direction(self, grid, grid_size, dx, dy):
         new_pos = (self.rect.x + dx * self.vel, self.rect.y + dy * self.vel)
@@ -252,7 +266,10 @@ class Player(pygame.sprite.Sprite):
             self.rect.height / 4,
         )
 
-        collided_groups = self.is_collide(grid.block_group, grid.obstacle_group)
+        collided_groups = self.is_collide(
+            grid.obstacle_group,
+            grid.block_group,
+        )
         if not (
             (
                 grid.get_coord(tmp_x, tmp_y) == new_coord
@@ -269,20 +286,21 @@ class Player(pygame.sprite.Sprite):
         if collided_groups:
             self.rect.x = tmp_x
             self.rect.y = tmp_y
-            for block in collided_groups:
-                threshold = self.rect.height / 2
+            for entity in collided_groups:
+                threshold = self.rect.height / 3
+                entity_rect = entity.tile_rect if isinstance(entity, Obstacle) else entity.rect
                 if dx == 1 or dx == -1:
-                    if block.tile_rect.y + self.rect.height - self.rect.y <= threshold:
-                        self.rect.y += self.vel
+                    if entity_rect.y + self.rect.height - self.rect.y <= threshold:
+                        self.rect.y += 1
                     elif (
-                        self.rect.y + self.rect.height - block.tile_rect.y <= threshold
+                        self.rect.y + self.rect.height - entity_rect.y <= threshold
                     ):
-                        self.rect.y -= self.vel
+                        self.rect.y -= 1
                 elif dy == 1 or dy == -1:
-                    if block.tile_rect.x + self.rect.width - self.rect.x <= threshold:
-                        self.rect.x += self.vel
-                    if self.rect.x + self.rect.width - block.tile_rect.x <= threshold:
-                        self.rect.x -= self.vel
+                    if entity_rect.x + self.rect.width - self.rect.x <= threshold:
+                        self.rect.x += 1
+                    elif self.rect.x + self.rect.width - entity_rect.x <= threshold:
+                        self.rect.x -= 1
 
     def is_collide(self, *groups):
         total_overlap_area = 0
@@ -294,11 +312,11 @@ class Player(pygame.sprite.Sprite):
                 sprite_rect = sprite.rect
                 if isinstance(sprite, Bubble):
                     threshold = 0.5
-                elif isinstance(sprite, Block) or isinstance(sprite, Obstacle):
+                elif isinstance(sprite, Obstacle):
                     player_area = self.rect.width * self.rect.height
                     sprite_rect = sprite.tile_rect
                     rect = self.rect
-                    threshold = 0
+                    threshold = 0.01
                 else:
                     threshold = 0.66
                 if rect.colliderect(sprite_rect):
@@ -321,6 +339,4 @@ class Player(pygame.sprite.Sprite):
                 self.num_bubbles -= 1
 
     def pick_up_item(self, item):
-        if isinstance(item, BubbleItem):
-            item.kill()
-            self.num_bubbles += 1
+        item.acquire(self)

@@ -46,7 +46,7 @@ class AssetStore(dict):
             for asset_name, asset_data in asset_dict.items():
                 asset_spritesheet = asset_data.get("spritesheet")
                 if asset_spritesheet:
-                    if asset_type not in self:
+                    if asset_type not in self["spritesheets"]:
                         self["spritesheets"][asset_type] = {}
                     new_asset = Asset(
                         asset_type,

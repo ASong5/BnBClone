@@ -9,7 +9,7 @@ class Assets(str, Enum):
     ITEMS = "items"
     BLOCKS = "blocks"
     OBSTACLES = "obstacles"
-    BUBBLE_TRAPPED = "bubble-trapped"
+    BUBBLE_TRAPPED = "bubble_trapped"
 
 class Bubbles(str, Enum):
     DEFAULT = "default"
@@ -28,6 +28,7 @@ class Maps(str, Enum):
 
 class Items(str, Enum):
     BUBBLE = "bubble"
+    SPEED_SHOE = "speed_shoe"
 
 class Obstacles(str, Enum):
     POST = "post"

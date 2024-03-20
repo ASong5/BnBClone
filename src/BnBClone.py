@@ -21,7 +21,7 @@ class GameObject:
         self.map_name = config.MAP_NAME
         self.user_id = 0
         player_list = []
-        player_list.append(entities.Player(self.asset_store, self.user_id, 4))
+        player_list.append(entities.Player(self.asset_store, self.user_id, 5))
         tile_map = self.fetch_tile_map()
         if tile_map:
             self.grid = Grid(
