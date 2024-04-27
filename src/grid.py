@@ -54,6 +54,9 @@ class Grid:
                             )
                         )
 
+    def addPlayer(self, player):
+        self.player_group.add(player)
+
     def toggle_bubble(self, row, col):
         self.__tiles[row][col].has_bubble = not self.__tiles[row][col].has_bubble
 
@@ -62,9 +65,9 @@ class Grid:
 
     def add_bubble(self, bubble_to_add):
         groups_to_merge = set()
-        direction_to_ignore = set()
         for bubbles, _ in self.bubble_groups:
             for bubble in bubbles.sprites():
+                direction_to_ignore = set()
                 for i in range(bubble.explosion_range):
                     for j in range(4):
                         if j in direction_to_ignore:
