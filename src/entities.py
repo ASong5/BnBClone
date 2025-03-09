@@ -1,6 +1,5 @@
 import random
 from enum import Enum
-
 import pygame
 
 from item import BubbleItem, SpeedShoeItem, NeedleItem
@@ -163,7 +162,7 @@ class Explosion(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, asset_store, id, max_speed):
+    def __init__(self, asset_store, id, max_speed, start_x=0, start_y=0):
         super(Player, self).__init__()
         self.asset_store = asset_store
         self.asset = self.asset_store["spritesheets"][Assets.CHARACTER][
@@ -176,7 +175,10 @@ class Player(pygame.sprite.Sprite):
             idx=self.animation_state, flip_x=self.sprite_flip_x
         )
         self.image_idx = 0
-        self.rect = self.image.get_frect()
+        if start_x and start_y:
+            self.rect = self.image.get_frect(topleft=(start_x, start_y))
+        else:
+            self.rect = self.image.get_frect()
         self.hitbox = pygame.Rect(
             self.rect.x + self.image.get_width() / 7,
             self.rect.y + self.image.get_height() * (3 / 4),
@@ -187,14 +189,14 @@ class Player(pygame.sprite.Sprite):
 
         self.max_speed = max_speed
         self.vel = self.max_speed
-        self.num_bubbles = 1
+        self.num_bubbles = 6
 
         self.explosion_range = 7
         self.animation_timer = pygame.time.get_ticks()
 
         self.inventory = []
 
-    def update(self, grid, grid_size, pressed_keys):  # type: ignore
+    def update(self, grid, grid_size, pressed_keys, id):  # type: ignore
         self.image = self.asset.get_current_frame(
             idx=self.animation_state
             if not self.is_trapped
@@ -213,10 +215,10 @@ class Player(pygame.sprite.Sprite):
             self.image.get_height() / 4,
         )
 
-    #        tile_size = self.rect.width
-    #        pygame.draw.rect(
-    #            self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
-    #        )
+        #        tile_size = self.rect.width
+        #        pygame.draw.rect(
+        #            self.image, pygame.Color(255, 0, 0), (0, 0, tile_size, tile_size), 1
+        #        )
 
     def use_item(self, idx):
         if 0 <= idx < len(self.inventory):

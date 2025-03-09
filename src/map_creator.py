@@ -237,7 +237,6 @@ class MapCreator:
         pickle.dump(self.canvas.tile_map, file)
         pygame.quit()
 
-
 option = None
 while option not in [1, 2]:
     print(

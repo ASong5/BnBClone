@@ -8,7 +8,7 @@ GRID_SIZE = config["grid_size"]
 NUM_TILES = config["num_tiles"]
 SPRITE_SIZE = GRID_SIZE / NUM_TILES
 FPS = config["fps"]
-MAP_NAME = "test"
+MAP_NAME = "test123"
 
 def convert_indices_to_int(data) -> dict:
     if isinstance(data, dict):

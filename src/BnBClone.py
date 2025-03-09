@@ -34,27 +34,28 @@ class GameObject:
         @self.sio.event
         def update_game_state(data):
             players = data["players"]
+            # Iterate over the list of players received from the server
             for player_data in players:
                 player_id = player_data["player_id"]
                 x = player_data["x"]
                 y = player_data["y"]
-                if player_id == self.user_id:
-                    continue  # Skip updating the local player's position
-                print(f"Updating player {player_id} to position ({x}, {y})")
-                # Update the position of the player in the local game state
+                
+                # Store remote player actions instead of directly updating positions
+                self.player_actions[player_id] = player_data["pressed_keys"]
+
+                # Check if the player already exists locally
                 player_found = False
                 for player in self.grid.player_group.sprites():
                     if player.id == player_id:
-                        self.player_actions[player_id] = player_data["actions"] 
                         player_found = True
                         break
+
+                # If player does not exist locally, add them
                 if not player_found:
-                    # Add new player to the game state
+                    print(f"Adding player {player_id}")
                     new_player = entities.Player(
-                        self.asset_store, player_id, self.max_speed
+                        self.asset_store, player_id, self.max_speed, x, y
                     )
-                    new_player.rect.x = x * config.SPRITE_SIZE
-                    new_player.rect.y = y * config.SPRITE_SIZE
                     self.grid.player_group.add(new_player)
 
         self.room_manager = RoomManager(self.sio)
@@ -67,6 +68,8 @@ class GameObject:
         self.map_name = config.MAP_NAME
         self.clock = pygame.time.Clock()
         self.running = True
+        self.x = 0
+        self.y = 0
         self.pressed_keys = []
         self.player_actions = {}
 
@@ -78,17 +81,21 @@ class GameObject:
         return tile_map if tile_map else None
 
     def update(self):
+        # update animations
         for _, asset_dict in self.asset_store["spritesheets"].items():
             for _, asset in asset_dict.items():
                 if isinstance(asset, Asset) and asset.animation is not None:
                     asset.animation.update_frame()
         self.grid.update(self.asset_store)
+
         players = self.grid.player_group.sprites()
         for player in players:
             if player.id == self.user_id:
                 player.update(
                     self.grid, config.GRID_SIZE, self.pressed_keys, self.user_id
                 )
+                self.x = player.rect.x
+                self.y = player.rect.y
             elif player.id in self.player_actions:
                 player.update(
                     self.grid,
@@ -139,7 +146,7 @@ class GameObject:
                         pygame.K_LEFT,
                     ]:
                         self.pressed_keys.append(event.key)
-                        self.send_player_action(self.user_id, event.key)
+                        self.send_player_action()
                     if event.key == pygame.K_SPACE:
                         for player in self.grid.player_group.sprites():
                             if player.id == self.user_id:
@@ -168,22 +175,23 @@ class GameObject:
                         pygame.K_LEFT,
                     ]:
                         self.pressed_keys.remove(event.key)
+                        self.send_player_action()
             self.update()
             self.draw()
             self.clock.tick(config.FPS)
         self.terminate()
         self.sio.disconnect()
 
-    def send_player_action(self, id, key):
-        player_action = {id: [key]}
-        if player_action:
-            self.sio.emit(
-                "player_action",
-                {
-                    "room_id": self.room_manager.current_room,
-                    "player_action": player_action,
-                },
-            )
+    def send_player_action(self):
+        self.sio.emit(
+            "player_action",
+            {
+                "room_id": self.room_manager.current_room,
+                "pressed_keys": self.pressed_keys,
+                "x": self.x,
+                "y": self.y,
+            },
+        )
 
     def terminate(self):
         pygame.quit()

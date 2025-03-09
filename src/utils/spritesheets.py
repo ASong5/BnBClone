@@ -3,7 +3,6 @@ import os
 import json
 from utils.config import convert_indices_to_int
 
-
 class Spritesheet:
     def __init__(self, path, config_path):
         self.path = path
